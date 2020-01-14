@@ -1,0 +1,37 @@
+{
+  "app": {
+    "secret": "\\S+",
+    "tokenType": "\\w+",
+    "port": "\\d+",
+    "link": "https?:\\/\\/[\\w\\/\\.-:]+",
+    "project": "\\w+"
+  },
+  "db": {
+    "host": ".*",
+    "database": "\\w+",
+    "username": "\\w+",
+    "password": "\\S+",
+    "dialect": "\\w+",
+    "pool": {
+      "max": "\\d+",
+      "min": "\\d+",
+      "acquire": "\\d+",
+      "idle": "\\d+"
+    },
+    "logging": "true|false"
+  },
+  "db_test": {
+    "host": "\\w+",
+    "database": "\\w+",
+    "username": "\\w+",
+    "password": "\\S+",
+    "dialect": "\\w+",
+    "pool": {
+      "max": "\\d+",
+      "min": "\\d+",
+      "acquire": "\\d+",
+      "idle": "\\d+"
+    },
+    "logging": "true|false"
+  }
+}

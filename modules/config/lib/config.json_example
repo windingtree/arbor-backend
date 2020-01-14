@@ -1,0 +1,36 @@
+{
+	"domain": "61and8.loc",
+	"http": {
+		"port": "3480",
+		"host": "61and8.loc"
+	},
+	"app": {
+    		"link": "https://snowball.money",
+    		"secret": "[1)07T]z@I!H9]c_«qIærOG$P0Np10l6Î7(25µf<j@L6};ZBÄs_î;ü0=QpC[µðo}",
+    		"domain": "snowball.money"
+    	},
+	"https": {
+		"port": "13441",
+		"host": "61and8.loc",
+		"sslOptions": {
+			"key": "wfe.key",
+			"pem": "wfe.pem"
+		}
+	},
+	"pause_checkOpenOrders": 1800000,
+	"primetrust": {
+		"username": "sandbox@snowball.money",
+		"password": "********",
+		"API_URL": "https://sandbox.primetrust.com",
+		"ACCOUNT_ID": "********-****-****-****-************"
+	},
+	"exchangeId": "kraken",
+	"kraken": {
+		"apiKey": "********************************************************",
+		"secret": "*********************/*********************************************/******************=="
+	},
+	"InvestmentFee": 0.0075,
+	"ReallocationFee": 0.0075,
+	"RebalanceFee": 0.0075,
+	"applyAlternativeMinimumVolumeOrders": true
+}

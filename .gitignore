@@ -1,0 +1,17 @@
+package-lock.json
+.DS_Store
+.idea/
+node_modules/
+.vscode/
+.env
+/uploads/
+modules/config/lib/*.json
+!modules/config/lib/expected_*.json
+dump.rdb
+coverage/
+.nyc_output
+#Local test folder and files
+/_test/
+/test.js
+static/tmp/
+/config

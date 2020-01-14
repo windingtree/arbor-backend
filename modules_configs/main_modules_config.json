@@ -1,0 +1,14 @@
+{
+  "modules": {
+    "config": {
+      "module": "./modules/config",
+      "parameters": {
+        "impl": "config"
+      }
+    },
+    "models": {
+      "module": "./modules/models",
+      "dependencies": ["config", "modules_config"]
+    }
+  }
+}
