@@ -9,6 +9,17 @@
     "models": {
       "module": "./modules/models",
       "dependencies": ["config", "modules_config"]
+    },
+    "events": {
+      "module": "./modules/events",
+      "dependencies": []
+    },
+    "cached": {
+      "module": "./modules/cached",
+      "dependencies": [],
+      "parameters": {
+        "model": true
+      }
     }
   }
 }

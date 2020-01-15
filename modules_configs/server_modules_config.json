@@ -13,6 +13,17 @@
     "rest": {
       "module": "./modules/rest",
       "dependencies": ["config"]
+    },
+    "events": {
+      "module": "./modules/events",
+      "dependencies": []
+    },
+    "cached": {
+      "module": "./modules/cached",
+      "dependencies": [],
+      "parameters": {
+        "model": true
+      }
     }
   }
 }
