@@ -22,7 +22,7 @@ console.log(`~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`);
 console.log('  ');
 
 const bootstrap = require('./bootstrap');
-const configModule = require('./modules/config/lib/config');
+const configModule = require('./modules/config');
 const log4js = require('log4js');
 const log = require('log4js').getLogger('server');
 log.level = 'debug';
@@ -32,7 +32,6 @@ log4js.configure({
 });
 
 (async () => {
-    log.debug('going to init config');
     const configFn = await configModule([{ modules_config: 'server_modules_config' }], { impl: 'modules-config' });
     const predefinedModules = {};
     const ctx = await bootstrap(configFn, predefinedModules);
