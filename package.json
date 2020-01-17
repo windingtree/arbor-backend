@@ -2,6 +2,8 @@
   "dependencies": {
     "@types/express": "^4.17.2",
     "@types/jest": "^24.0.23",
+    "@windingtree/trust-clue-lif-deposit": "^0.2.0",
+    "@windingtree/wt-contracts": "^0.8.2",
     "chalk": "^3.0.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
@@ -15,7 +17,9 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.5",
     "sequelize": "^5.21.2",
-    "winston": "^3.2.1"
+    "web3": "^1.2.1",
+    "winston": "^3.2.1",
+    "zos-lib": "^2.4.2"
   },
   "devDependencies": {
     "jest": "^24.9.0",
