@@ -20,10 +20,14 @@
     },
     "cached": {
       "module": "./modules/cached",
-      "dependencies": [],
+      "dependencies": ["config", "models"],
       "parameters": {
         "model": true
       }
+    },
+    "smart_contract_connector": {
+      "module": "./modules/smart_contract_connector",
+      "dependencies": ["config", "cached"]
     }
   }
 }
