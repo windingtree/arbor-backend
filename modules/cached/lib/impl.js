@@ -6,10 +6,20 @@ log.level = 'debug';
 module.exports = function (config, models) {
     const loadOrganizationIntoDB = async (organizationPayload) => {
         // 1. Create database entry
-        log.debug('going to create section');
-        const organization = await models.orgid.create({
-            ...organizationPayload
-        });
+        log.debug('going to create orgid');
+        const organizationInfo = {
+            orgid: organizationPayload.address,
+            environment: organizationPayload.environment,
+            orgJsonUri: organizationPayload.orgJsonUri,
+            orgJsonHash: organizationPayload.orgJsonHash,
+            orgJsonContent: organizationPayload.orgJsonContent,
+            dateCreated: organizationPayload.dateCreated,
+            dateUpdated: organizationPayload.dateUpdated
+        };
+        log.debug('==================/==================');
+        log.info(JSON.stringify(organizationInfo, null, 2));
+        const organization = await models.orgid.create(organizationInfo);
+
         log.debug('view created org');
         log.info(JSON.stringify(organization.get(), null, 2));
         log.debug('====================================');

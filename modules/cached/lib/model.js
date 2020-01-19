@@ -20,14 +20,32 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
-    // TABLE 2 of 4: orgids
+
+    // TABLE 2 of 4: sections
+    const section = sequelize.define('section',
+        {
+            id: {
+                primaryKey: true,
+                type: Sequelize.STRING(42)
+            },
+            name: {
+                type: Sequelize.STRING(256)
+            }
+
+        },
+        {
+            timestamps: true,
+        }
+    );
+
+    // TABLE 3 of 4: orgids
     const orgid = sequelize.define('orgid',
         {
             orgid: {
                 primaryKey: true,
                 type: Sequelize.STRING(42)
             },
-            entrypoint: {
+            environment: {
                 type: Sequelize.STRING(42)
             },
             section: {
@@ -38,16 +56,19 @@ module.exports = function (sequelize) {
                 },
                 onUpdate: 'CASCADE',
             },
-            keccak256: {
-                type: Sequelize.STRING(64)
+            orgJsonHash: {
+                type: Sequelize.STRING(66)
             },
-            json_link: {
+            orgJsonUri: {
                 type: Sequelize.STRING(1024)
             },
-            json: {
+            orgJsonContent: {
                 type: Sequelize.BLOB
             },
-            json_updateAt: {
+            dateCreated: {
+                type: Sequelize.DATE
+            },
+            dateUpdated: {
                 type: Sequelize.DATE
             },
             //name: {},
@@ -59,7 +80,7 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
-    // TABLE 3 of 4: stats
+    // TABLE 4 of 4: stats
     const stats = sequelize.define('stats',
         {
             id: {
@@ -72,22 +93,6 @@ module.exports = function (sequelize) {
                 type: Sequelize.STRING(128)
             },
             value: {
-                type: Sequelize.STRING(256)
-            }
-
-        },
-        {
-            timestamps: true,
-        }
-    );
-    // TABLE 4 of 4: sections
-    const section = sequelize.define('section',
-        {
-            id: {
-                primaryKey: true,
-                type: Sequelize.STRING(42)
-            },
-            name: {
                 type: Sequelize.STRING(256)
             }
 

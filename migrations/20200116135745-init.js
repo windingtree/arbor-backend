@@ -23,14 +23,31 @@ module.exports = {
                         type: Sequelize.DATE
                     }
                 }),
-            // 1.
+            // 2.
+            queryInterface
+                .createTable('sections', {
+                    id: {
+                        primaryKey: true,
+                        type: Sequelize.STRING(42)
+                    },
+                    name: {
+                        type: Sequelize.STRING(256)
+                    },
+                    createdAt: {
+                        type: Sequelize.DATE
+                    },
+                    updatedAt: {
+                        type: Sequelize.DATE
+                    }
+                }),
+            // 3.
             queryInterface
                 .createTable('orgids', {
                     orgid: {
                         primaryKey: true,
                         type: Sequelize.STRING(42)
                     },
-                    entrypoint: {
+                    environment: {
                         type: Sequelize.STRING(42)
                     },
                     section: {
@@ -41,32 +58,33 @@ module.exports = {
                         },
                         onUpdate: 'CASCADE',
                     },
-                    keccak256: {
-                        type: Sequelize.STRING(64)
+                    orgJsonHash: {
+                        type: Sequelize.STRING(66)
                     },
-                    json_link: {
+                    orgJsonUri: {
                         type: Sequelize.STRING(1024)
                     },
-                    json: {
+                    orgJsonContent: {
                         type: Sequelize.BLOB
                     },
-                    json_updateAt: {
+                    dateCreated: {
                         type: Sequelize.DATE
                     },
-                    trust_clues_site_data: {
-                        type: Sequelize.STRING(512)
-                    },
-                    trust_clues_site_valid: {
-                        type: Sequelize.BOOLEAN
+                    dateUpdated: {
+                        type: Sequelize.DATE
                     },
                     createdAt: {
                         type: Sequelize.DATE
                     },
                     updatedAt: {
                         type: Sequelize.DATE
-                    }
+                    },
+                    //name: {},
+                    trust_clues_site_data: {type: Sequelize.STRING(512)}, //TODO make for <types>
+                    trust_clues_site_valid: {type: Sequelize.BOOLEAN},
 
                 }),
+            // 4.
             queryInterface
                 .createTable('stats', {
                     id: {
@@ -79,22 +97,6 @@ module.exports = {
                         type: Sequelize.STRING(128)
                     },
                     value: {
-                        type: Sequelize.STRING(256)
-                    },
-                    createdAt: {
-                        type: Sequelize.DATE
-                    },
-                    updatedAt: {
-                        type: Sequelize.DATE
-                    }
-                }),
-            queryInterface
-                .createTable('sections', {
-                    id: {
-                        primaryKey: true,
-                        type: Sequelize.STRING(42)
-                    },
-                    name: {
                         type: Sequelize.STRING(256)
                     },
                     createdAt: {
