@@ -38,39 +38,46 @@ module.exports = function (config, models) {
     };
 
     const getStats = async () => {
+        let stats = await models.stats.findAll();
+        stats = stats && stats.get ? stats.get() : stats;
         return {
             type: 'stats',
-            orgIdsQty: 50,
-            sectionsQty: 2,
-            dao_qty: 0
+            ...stats
         }
     };
 
-    const getOrgId = async () => {
-        return {
-            type: 'orgid',
+    const getOrgId = async (address) => {
+        let orgid = await models.orgid.findOne({ where: { orgid: address }});
+        if (orgid) {
+            orgid = orgid.get();
+            orgid.type = 'orgid';
+            orgid.orgJsonContent = orgid.orgJsonContent && orgid.orgJsonContent.toString ? orgid.orgJsonContent.toString() : orgid.orgJsonContent;
         }
+
+        return orgid
     };
 
-    const getOrgIds = async () => {
-        return [
-            {
-                type: 'orgid',
-            },
-            {
-                type: 'orgid',
-            }
-        ]
+    const getOrgIds = async (filters) => {
+        let orgids = await models.orgid.findAll();
+        orgids = _.map(orgids, orgid => {
+            orgid = orgid.get();
+            orgid.type = 'orgid';
+            orgid.orgJsonContent = orgid.orgJsonContent && orgid.orgJsonContent.toString ? orgid.orgJsonContent.toString() : orgid.orgJsonContent;
+            return orgid;
+        });
+
+        return orgids
     };
 
     const getSegments = async () => {
-        return [
-            {
-                type: 'segment',
-                name: 'hotels',
-                address: '0x0'
-            }
-        ]
+        let segments = await models.section.findAll();
+        segments = _.map(segments, segment => {
+            segment = segment.get();
+            segment.type = 'segment';
+            return orgid;
+        });
+
+        return segments
     };
 
     return Promise.resolve({
