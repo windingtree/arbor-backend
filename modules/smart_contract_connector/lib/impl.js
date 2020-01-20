@@ -33,8 +33,9 @@ module.exports = function (config, cached) {
         res.orgJsonUri = await organization.methods.orgJsonUri().call();
         res.orgJsonHash = await organization.methods.orgJsonHash().call();
         const createdBlock = await organization.methods.created().call();
-        const createdTimestamp = (await web3.eth.getBlock(createdBlock)).timestamp;
-        res.dateCreated = new Date(createdTimestamp * 1000);
+        const resolvedBlock = await web3.eth.getBlock(createdBlock);
+
+        res.dateCreated = resolvedBlock ? new Date(resolvedBlock.timestamp * 1000) : new Date();
         const associatedKeys = await organization.methods.getAssociatedKeys().call();
         associatedKeys.shift(); // remove zeroeth item
         res.associatedKeys = associatedKeys.join(',');
@@ -83,7 +84,6 @@ module.exports = function (config, cached) {
         log.info(JSON.stringify(res, null, 2));
 
         await cached.loadOrganizationIntoDB(res);
-
 
 
         //await Snapshot.upsert(res);
@@ -141,10 +141,15 @@ module.exports = function (config, cached) {
         }
     };
 
+    const listenEnvironmentEvents = async(envName) => {
+
+    };
 
 
     return Promise.resolve({
         scrapeEnvironment,
+        scrapeOrganization,
+        listenEnvironmentEvents,
         visibleForTests: {
             scrapeOrganization,
             prepareToScrapeDirectory

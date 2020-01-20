@@ -18,7 +18,13 @@ module.exports = function (config, models) {
         };
         log.debug('==================/==================');
         log.info(JSON.stringify(organizationInfo, null, 2));
-        const organization = await models.orgid.create(organizationInfo);
+        try {
+            const organization = await models.orgid.create(organizationInfo);
+        } catch (e) {
+            log.debug(e.toString());
+            log.debug(e);
+            throw e.toString()
+        }
 
         log.debug('view created org');
         log.info(JSON.stringify(organization.get(), null, 2));
