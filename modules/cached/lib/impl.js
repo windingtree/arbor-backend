@@ -37,8 +37,47 @@ module.exports = function (config, models) {
         // process.exit(0);
     };
 
+    const getStats = async () => {
+        return {
+            type: 'stats',
+            orgIdsQty: 50,
+            sectionsQty: 2,
+            dao_qty: 0
+        }
+    };
+
+    const getOrgId = async () => {
+        return {
+            type: 'orgid',
+        }
+    };
+
+    const getOrgIds = async () => {
+        return [
+            {
+                type: 'orgid',
+            },
+            {
+                type: 'orgid',
+            }
+        ]
+    };
+
+    const getSegments = async () => {
+        return [
+            {
+                type: 'segment',
+                name: 'hotels',
+                address: '0x0'
+            }
+        ]
+    };
 
     return Promise.resolve({
-        loadOrganizationIntoDB
+        loadOrganizationIntoDB,
+        getStats,
+        getOrgId,
+        getOrgIds,
+        getSegments
     });
 };
