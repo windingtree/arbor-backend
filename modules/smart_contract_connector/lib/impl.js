@@ -141,7 +141,53 @@ module.exports = function (config, cached) {
         }
     };
 
-    const listenEnvironmentEvents = async(envName) => {
+    const listenEnvironmentEvents = async (envName) => {
+        if (!config().environments[envName]) {
+            throw 'Unknown environment';
+        }
+        const environment = config().environments[envName];
+        const web3 = new Web3('wss://ropsten.infura.io/ws');
+        const provider = new Web3.providers.HttpProvider(`https://ropsten.infura.io/v3/${config().infura_project_id}`);
+        const abi = config().contracts.OrganizationFactory.abi;
+
+        const entrypoint = Entrypoint.at(environment.entrypoint);
+
+        // todo: get address 0x8E6463ea056d812094Ed514455Ab3C88fc23D59C programmatically
+        // truffle(ropsten)> entrypoint = await WindingTreeEntrypoint.at('0xa268937c2573e2AB274BF6d96e88FfE0827F0D4D')
+        // truffle(ropsten)> entrypoint.getOrganizationFactory()
+
+        let contract = new web3.eth.Contract(abi, "0x8E6463ea056d812094Ed514455Ab3C88fc23D59C");
+
+        contract.events
+            .allEvents(
+                {
+                    fromBlock: 0
+                },
+                async (error, event) => {
+                    if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
+                        let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
+                        const organization = await smart_contract_connector.scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
+                        log.debug("=================== Organization Info ===================");
+                        log.debug(organization);
+                        await cached.loadOrganizationIntoDB(organization)
+                    } else {
+                        log.debug("Not an OrganizationCreated event")
+                    }
+                    //log.debug(event);
+                }
+            )
+            .on('data', (event) => {
+                log.debug("=================== Data ===================");
+                log.debug(event);
+            })
+            .on('changed', (event) => {
+                log.debug("=================== Changed ===================");
+                log.debug(event);
+            })
+            .on('error', (error) => {
+                log.debug(error);
+            });
+
 
     };
 
