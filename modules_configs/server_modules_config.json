@@ -22,7 +22,8 @@
       "module": "./modules/cached",
       "dependencies": ["config", "models"],
       "parameters": {
-        "model": true
+        "model": true,
+        "rest": true
       }
     },
     "smart_contract_connector": {
