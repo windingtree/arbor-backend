@@ -38,7 +38,6 @@ module.exports = function (rest, cached) {
     });
 
     router.get('/segments', async (req, res) => {
-        const { id } = req.params;
         try {
             const segments = await cached.getSegments();
             res.status(200).send({ data: segments })
