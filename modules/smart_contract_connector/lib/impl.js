@@ -2,6 +2,7 @@ const _ = require('lodash');
 const chalk = require('chalk');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
+const abi = require('ethereumjs-abi');
 
 const fetch = require('node-fetch');
 const Web3 = require('web3');
@@ -148,11 +149,14 @@ module.exports = function (config, cached) {
         const environment = config().environments[envName];
         const web3 = new Web3('wss://ropsten.infura.io/ws');
         const provider = new Web3.providers.HttpProvider(`https://ropsten.infura.io/v3/${config().infura_project_id}`);
-        const abi = config().contracts.OrganizationFactory.abi;
-
+        //const abi = config().contracts.OrganizationFactory.abi;
         const entrypoint = Entrypoint.at(environment.entrypoint);
-        const factoryAddress = await entrypoint.getOrganizationFactory();
-        let contract = new web3.eth.Contract(abi, factoryAddress);
+        let factoryAddress = await entrypoint.getOrganizationFactory();
+        factoryAddress = "0x"+factoryAddress;
+
+        var encodedAbi = abi.rawEncode([ "address" ], [factoryAddress]);
+        log.debug(encodedAbi);
+        let contract = new web3.eth.Contract(encodedAbi, factoryAddress);
 
         contract.events
             .allEvents(
@@ -171,9 +175,6 @@ module.exports = function (config, cached) {
                 if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
                     const organization = await smart_contract_connector.scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
-                    log.debug("=================== Organization Info ===================");
-                    log.debug(organization);
-                    await cached.loadOrganizationIntoDB(organization)
                 } else {
                     log.debug("Not an OrganizationCreated event")
                 }

@@ -6,6 +6,7 @@
     "@windingtree/wt-contracts": "^0.8.2",
     "chalk": "^3.0.0",
     "cors": "^2.8.5",
+    "ethereumjs-abi": "^0.6.8",
     "express": "^4.17.1",
     "ip": "^1.1.5",
     "jsonwebtoken": "^8.5.1",
