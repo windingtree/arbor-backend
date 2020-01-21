@@ -150,11 +150,13 @@ module.exports = function (config, cached) {
         const web3 = new Web3('wss://ropsten.infura.io/ws');
         const provider = new Web3.providers.HttpProvider(`https://ropsten.infura.io/v3/${config().infura_project_id}`);
         //const abi = config().contracts.OrganizationFactory.abi;
+        //log.debug(environment);
         const entrypoint = Entrypoint.at(environment.entrypoint);
+        //log.debug(entrypoint);
         let factoryAddress = await entrypoint.getOrganizationFactory();
         factoryAddress = "0x"+factoryAddress;
 
-        var encodedAbi = abi.rawEncode([ "address" ], [factoryAddress]);
+        const encodedAbi = abi.rawEncode([ "address" ], [factoryAddress]);
         log.debug(encodedAbi);
         let contract = new web3.eth.Contract(encodedAbi, factoryAddress);
 
