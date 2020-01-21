@@ -2,12 +2,11 @@ const _ = require('lodash');
 const chalk = require('chalk');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
-const abi = require('ethereumjs-abi');
-
 const fetch = require('node-fetch');
 const Web3 = require('web3');
 const lib = require('zos-lib');
 const Contracts = lib.Contracts;
+const OrganizationFactory = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'OrganizationFactory');
 const Organization = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'Organization');
 const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
 const Entrypoint = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'WindingTreeEntrypoint');
@@ -147,30 +146,24 @@ module.exports = function (config, cached) {
             throw 'Unknown environment';
         }
         const environment = config().environments[envName];
-        const web3 = new Web3('wss://ropsten.infura.io/ws');
-        const provider = new Web3.providers.HttpProvider(`https://ropsten.infura.io/v3/${config().infura_project_id}`);
-        //const abi = config().contracts.OrganizationFactory.abi;
-        //log.debug(environment);
-
+        const web3 = await new Web3('wss://ropsten.infura.io/ws');
         const entrypoint = await Entrypoint.at(environment.entrypoint);
-        //log.debug(entrypoint);
-        debugger;
-        let factoryAddress = await entrypoint.methods.getOrganizationFactory();
-        factoryAddress = "0x"+factoryAddress;
+        entrypoint.setProvider(web3.currentProvider);
 
-        const encodedAbi = abi.simpleEncode("balanceOf(address):(uint256)", factoryAddress);
-        log.debug(encodedAbi);
-        let contract = new web3.eth.Contract(encodedAbi, factoryAddress);
-
+        let factory = await entrypoint.methods.getOrganizationFactory();
+        let factoryCalled = await factory.call();
+        const abi = OrganizationFactory.schema.abi;
+        let contract = await new web3.eth.Contract(abi, factoryCalled);
         contract.events
             .allEvents(
                 {
                     fromBlock: 0
                 },
                 async (error, event) => {
+                    /*
                     if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                         log.debug("Loaded OrgCreated event")
-                    };
+                    }*/
                     //log.debug(event);
                 }
             )
@@ -178,7 +171,7 @@ module.exports = function (config, cached) {
                 log.debug("=================== Data ===================");
                 if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
-                    const organization = await smart_contract_connector.scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
+                    const organization = await scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
                 } else {
                     log.debug("Not an OrganizationCreated event")
                 }
