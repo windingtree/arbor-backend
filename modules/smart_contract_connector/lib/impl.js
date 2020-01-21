@@ -27,7 +27,7 @@ module.exports = function (config, cached) {
         process.stdout.write('on-chain... ');
         const provider = new Web3.providers.HttpProvider(providerAddress);
         const web3 = new Web3(provider);
-        const organization = Organization.at(orgAddress);
+        const organization = await Organization.at(orgAddress);
         organization.setProvider(web3.currentProvider);
 
         res.orgid = await organization.methods.owner().call();
@@ -121,7 +121,7 @@ module.exports = function (config, cached) {
         const provider = new Web3.providers.HttpProvider(environment.provider);
         const web3 = new Web3(provider);
 
-        const entrypoint = Entrypoint.at(environment.entrypoint);
+        const entrypoint = await Entrypoint.at(environment.entrypoint);
         entrypoint.setProvider(web3.currentProvider);
 
         const segmentCount = await entrypoint.methods.getSegmentsLength().call();
@@ -151,12 +151,14 @@ module.exports = function (config, cached) {
         const provider = new Web3.providers.HttpProvider(`https://ropsten.infura.io/v3/${config().infura_project_id}`);
         //const abi = config().contracts.OrganizationFactory.abi;
         //log.debug(environment);
-        const entrypoint = Entrypoint.at(environment.entrypoint);
+
+        const entrypoint = await Entrypoint.at(environment.entrypoint);
         //log.debug(entrypoint);
-        let factoryAddress = await entrypoint.getOrganizationFactory();
+        debugger;
+        let factoryAddress = await entrypoint.methods.getOrganizationFactory();
         factoryAddress = "0x"+factoryAddress;
 
-        const encodedAbi = abi.rawEncode([ "address" ], [factoryAddress]);
+        const encodedAbi = abi.simpleEncode("balanceOf(address):(uint256)", factoryAddress);
         log.debug(encodedAbi);
         let contract = new web3.eth.Contract(encodedAbi, factoryAddress);
 
