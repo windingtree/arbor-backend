@@ -20,14 +20,16 @@ module.exports = function (config, models) {
         log.info(JSON.stringify(organizationInfo, null, 2));
         try {
             const organization = await models.orgid.create(organizationInfo);
+            log.info(JSON.stringify(organization.get(), null, 2));
+            log.debug('view created org');
         } catch (e) {
             log.debug(e.toString());
             log.debug(e);
             throw e.toString()
         }
 
-        log.debug('view created org');
-        log.info(JSON.stringify(organization.get(), null, 2));
+
+
         log.debug('====================================');
         /*
         // Find
