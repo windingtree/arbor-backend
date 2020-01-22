@@ -28,7 +28,8 @@ module.exports = function (config, cached) {
         const organization = await Organization.at(orgAddress);
         organization.setProvider(web3.currentProvider);
         try {
-            res.orgid = await organization.methods.owner().call();
+            res.orgid = await organization.address; //TODO review
+            res.owner = await organization.methods.owner().call();
             res.orgJsonUri = await organization.methods.orgJsonUri().call();
             log.debug(res.orgJsonUri);
             res.orgJsonHash = await organization.methods.orgJsonHash().call();

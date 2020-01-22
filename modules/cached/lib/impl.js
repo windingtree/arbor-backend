@@ -9,6 +9,7 @@ module.exports = function (config, models) {
         log.debug('going to create orgid');
         const organizationInfo = {
             orgid: organizationPayload.address,
+            owner: organizationPayload.owner,
             environment: organizationPayload.environment,
             orgJsonUri: organizationPayload.orgJsonUri,
             orgJsonHash: organizationPayload.orgJsonHash,
@@ -27,7 +28,6 @@ module.exports = function (config, models) {
             log.debug(e);
             throw e.toString()
         }
-
 
 
         log.debug('====================================');
@@ -55,7 +55,7 @@ module.exports = function (config, models) {
     };
 
     const getOrgId = async (address) => {
-        let orgid = await models.orgid.findOne({ where: { orgid: address }});
+        let orgid = await models.orgid.findOne({where: {orgid: address}});
         if (orgid) {
             orgid = orgid.get();
             orgid.type = 'orgid';
@@ -66,14 +66,19 @@ module.exports = function (config, models) {
     };
 
     const getOrgIds = async (filters) => {
-        let orgids = await models.orgid.findAll();
+        const {owner} = filters;
+        debugger;
+        let orgids = await models.orgid.findAll({
+            where: {
+                owner
+            }
+        });
         orgids = _.map(orgids, orgid => {
             orgid = orgid.get();
             orgid.type = 'orgid';
             orgid.orgJsonContent = orgid.orgJsonContent && orgid.orgJsonContent.toString ? orgid.orgJsonContent.toString() : orgid.orgJsonContent;
             return orgid;
         });
-
         return orgids
     };
 

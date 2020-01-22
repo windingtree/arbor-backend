@@ -56,6 +56,9 @@ module.exports = function (sequelize) {
                 },
                 onUpdate: 'CASCADE',
             },
+            owner: {
+                type: Sequelize.STRING(66),
+            },
             orgJsonHash: {
                 type: Sequelize.STRING(66)
             },
