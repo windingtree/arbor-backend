@@ -15,7 +15,6 @@ const SegmentDirectory = Contracts.getFromNodeModules('@windingtree/wt-contracts
 module.exports = function (config, cached) {
 
     const scrapeOrganization = async (orgAddress, segments, envName, providerAddress, lifDepositAddress) => {
-        process.stdout.write(`Scraping organization ${orgAddress}: `);
         const res = {
             environment: envName,
             segments: segments,
@@ -28,59 +27,69 @@ module.exports = function (config, cached) {
         const web3 = new Web3(provider);
         const organization = await Organization.at(orgAddress);
         organization.setProvider(web3.currentProvider);
-
-        res.orgid = await organization.methods.owner().call();
-        res.orgJsonUri = await organization.methods.orgJsonUri().call();
-        res.orgJsonHash = await organization.methods.orgJsonHash().call();
-        const createdBlock = await organization.methods.created().call();
-        const resolvedBlock = await web3.eth.getBlock(createdBlock);
-
-        res.dateCreated = resolvedBlock ? new Date(resolvedBlock.timestamp * 1000) : new Date();
-        const associatedKeys = await organization.methods.getAssociatedKeys().call();
-        associatedKeys.shift(); // remove zeroeth item
-        res.associatedKeys = associatedKeys.join(',');
-
-        // off-chain
-        process.stdout.write('off-chain... ');
-        const orgJsonResponse = await fetch(res.orgJsonUri);
-        const orgJsonText = await orgJsonResponse.text();
-
-        let orgJsonContent;
         try {
-            orgJsonContent = JSON.parse(orgJsonText);
-            res.orgJsonContent = orgJsonText;
-        } catch (e) {
-            console.warn(`Invalid json for org.id at ${orgAddress}`);
-        }
+            res.orgid = await organization.methods.owner().call();
+            res.orgJsonUri = await organization.methods.orgJsonUri().call();
+            log.debug(res.orgJsonUri);
+            res.orgJsonHash = await organization.methods.orgJsonHash().call();
+            const createdBlock = await organization.methods.created().call();
+            const resolvedBlock = await web3.eth.getBlock(createdBlock);
 
-        if (orgJsonContent) {
-            if (orgJsonContent.updatedAt) {
-                res.dateUpdated = new Date(orgJsonContent.updatedAt);
+            res.dateCreated = resolvedBlock ? new Date(resolvedBlock.timestamp * 1000) : new Date();
+            const associatedKeys = await organization.methods.getAssociatedKeys().call();
+            associatedKeys.shift(); // remove zeroeth item
+            res.associatedKeys = associatedKeys.join(',');
+
+            // off-chain
+            process.stdout.write('off-chain... ');
+            let orgJsonResponse, orgJsonText;
+            try {
+                orgJsonResponse = await fetch(res.orgJsonUri);
+                orgJsonText = await orgJsonResponse.text();
+            } catch (e) {
+                log.debug(e);
+
+            }
+            let orgJsonContent;
+            try {
+                orgJsonContent = JSON.parse(orgJsonText);
+                res.orgJsonContent = orgJsonText;
+            } catch (e) {
+                console.warn(`Invalid json for org.id at ${orgAddress}`);
             }
 
-            if (orgJsonContent.legalEntity) {
-                res.name = orgJsonContent.legalEntity.name;
-                if (orgJsonContent.legalEntity.address) {
-                    res.city = orgJsonContent.legalEntity.address.city;
+            if (orgJsonContent) {
+                if (orgJsonContent.updatedAt) {
+                    res.dateUpdated = new Date(orgJsonContent.updatedAt);
+                }
 
-                    const postal = orgJsonContent.legalEntity.address;
-                    const postalAddressString = `${postal.houseNumber || ''} ${postal.road || ''}, ${postal.city || ''}, ${postal.postcode || ''}, ${postal.countryCode || ''}`;
-                    /*const { gpsCoordsLat, gpsCoordsLon } = await findCoordinates(postalAddressString);
-                    res.gpsCoordsLat = gpsCoordsLat;
-                    res.gpsCoordsLon = gpsCoordsLon;*/
+                if (orgJsonContent.legalEntity) {
+                    res.name = orgJsonContent.legalEntity.name;
+                    if (orgJsonContent.legalEntity.address) {
+                        res.city = orgJsonContent.legalEntity.address.city;
+
+                        const postal = orgJsonContent.legalEntity.address;
+                        const postalAddressString = `${postal.houseNumber || ''} ${postal.road || ''}, ${postal.city || ''}, ${postal.postcode || ''}, ${postal.countryCode || ''}`;
+                        /*const { gpsCoordsLat, gpsCoordsLon } = await findCoordinates(postalAddressString);
+                        res.gpsCoordsLat = gpsCoordsLat;
+                        res.gpsCoordsLon = gpsCoordsLon;*/
+                    }
                 }
             }
+
+            // deposit
+            process.stdout.write('lif-deposit... ');
+            const deposit = LifDeposit.at(lifDepositAddress);
+            deposit.setProvider(web3.currentProvider);
+            res.lifDepositValue = await deposit.methods.getDepositValue(orgAddress).call();
+
+            res.timestamp = new Date();
+
+            process.stdout.write('res parsed');
         }
-
-        // deposit
-        process.stdout.write('lif-deposit... ');
-        const deposit = LifDeposit.at(lifDepositAddress);
-        deposit.setProvider(web3.currentProvider);
-        res.lifDepositValue = await deposit.methods.getDepositValue(orgAddress).call();
-
-        res.timestamp = new Date();
-
-        process.stdout.write('res parsed');
+        catch (e) {
+            log.debug(e);
+        }
         log.info(JSON.stringify(res, null, 2));
 
         await cached.loadOrganizationIntoDB(res);
@@ -116,6 +125,7 @@ module.exports = function (config, cached) {
     };
 
     const scrapeEnvironment = async (envName, environment) => {
+
         console.log(`Scraping environment ${envName}`);
         const provider = new Web3.providers.HttpProvider(environment.provider);
         const web3 = new Web3(provider);
@@ -146,18 +156,56 @@ module.exports = function (config, cached) {
             throw 'Unknown environment';
         }
         const environment = config().environments[envName];
-        const web3 = await new Web3('wss://ropsten.infura.io/ws');
-        const entrypoint = await Entrypoint.at(environment.entrypoint);
-        entrypoint.setProvider(web3.currentProvider);
+        const web3 = await new Web3();
 
+        function refreshProvider(web3Obj, providerUrl) {
+            let retries = 0;
+
+            function retry(event) {
+                if (event) {
+                    log.debug('Web3 provider disconnected or errored.');
+                    retries += 1;
+
+                    if (retries > 5) { //TODO: check if retry working
+                        log.debug(`Max retries of 5 exceeding: ${retries} times tried`);
+                        return setTimeout(refreshProvider, 5000)
+                    }
+                } else {
+                    refreshProvider(web3Obj, providerUrl)
+                }
+
+                return null
+            }
+
+            const provider = new Web3.providers.WebsocketProvider(providerUrl);
+
+            provider.on('end', () => {
+                    log.debug("Connection ended");
+                    retry()
+                }
+            );
+            provider.on('error', () => retry());
+
+            web3Obj.setProvider(provider);
+
+            log.debug('New Web3 provider initiated');
+
+            return provider
+        }
+
+        let wssProvider = refreshProvider(web3, "wss://ropsten.infura.io/ws/v3/c525e4af99fc411e88fa17092008ce26");
+        const entrypoint = await Entrypoint.at(environment.entrypoint);
+        entrypoint.setProvider(wssProvider);
         let factory = await entrypoint.methods.getOrganizationFactory();
         let factoryCalled = await factory.call();
         const abi = OrganizationFactory.schema.abi;
         let contract = await new web3.eth.Contract(abi, factoryCalled);
+        const currentBlock = await web3.eth.getBlockNumber();
+        log.debug(`currentBlock: ${currentBlock}`);
         contract.events
             .allEvents(
                 {
-                    fromBlock: 0
+                    fromBlock: currentBlock
                 },
                 async (error, event) => {
                     /*
@@ -168,15 +216,16 @@ module.exports = function (config, cached) {
                 }
             )
             .on('data', async (event) => {
-                log.debug("=================== Data ===================");
+                log.debug("=================== Data ==========");
                 if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
+                    log.debug(`OrganizationCreated:${createdAddress}`);
                     const organization = await scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
                 } else {
                     log.debug("Not an OrganizationCreated event")
                 }
 
-                log.debug(event);
+                //log.debug(event);
             })
             .on('changed', (event) => {
                 log.debug("=================== Changed ===================");
