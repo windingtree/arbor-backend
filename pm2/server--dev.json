@@ -1,0 +1,35 @@
+{
+  "apps": [{
+    "name": "server--dev",
+    "script": "server.js",
+    "watch": true,
+    "ignore_watch": [
+      ".git",
+      ".idea",
+      ".nyc_output",
+      "_test",
+      "coverage",
+      "dump.rdb",
+      "temp-*.rdb",
+      "node_modules",
+      "services/test.js",
+      "services/cli",
+      "test.js",
+      "yarn.lock",
+
+      "*___jb_tmp___",
+      "modules/**/test/**_test.js",
+      "pm2/**--dev.json"
+    ],
+    "output": "~/.pm2/logs/backend--dev-out.log",
+    "error":  "~/.pm2/logs/backend--dev-error.log",
+    "log":    "~/.pm2/logs/backend--dev-merged.log",
+    "env": {
+      "NODE_ENV": "development",
+      "name": "server-dev"
+    },
+    "args": [
+      "--color"
+    ]
+  }]
+}
