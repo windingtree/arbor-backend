@@ -24,7 +24,7 @@ const { env, qty } = cliOptions;
             // ...
         };
         const organizationPayload = {
-            address: '...',
+            orgid: '...',
             owner: '...',
             environment: env,
             orgJsonUri: '...',
@@ -33,7 +33,7 @@ const { env, qty } = cliOptions;
             dateCreated: '...',
             dateUpdated: '...'
         };
-        await cached.loadOrganizationIntoDB(organizationPayload);
+        await cached.upsertOrgid(organizationPayload);
     }
 
     process.exit(0);

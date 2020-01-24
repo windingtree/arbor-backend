@@ -4,45 +4,21 @@ const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').
 log.level = 'debug';
 
 module.exports = function (config, models) {
-    const loadOrganizationIntoDB = async (organizationPayload) => {
-        // 1. Create database entry
-        log.debug('going to create orgid');
-        const organizationInfo = {
-            orgid: organizationPayload.address,
-            owner: organizationPayload.owner,
-            environment: organizationPayload.environment,
-            orgJsonUri: organizationPayload.orgJsonUri,
-            orgJsonHash: organizationPayload.orgJsonHash,
-            orgJsonContent: organizationPayload.orgJsonContent,
-            dateCreated: organizationPayload.dateCreated,
-            dateUpdated: organizationPayload.dateUpdated
-        };
-        log.debug('==================/==================');
-        log.info(JSON.stringify(organizationInfo, null, 2));
+    const upsertOrgid = async (organizationPayload) => {
+        log.debug('going to create orgid:');
+        log.info(JSON.stringify(organizationPayload, null, 2));
+        let orgid;
         try {
-            const organization = await models.orgid.upsert(organizationInfo, { orgid: organizationInfo.orgid });
-            log.info(JSON.stringify(organization.get(), null, 2));
+            orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
+            log.info(JSON.stringify(orgid.get(), null, 2));
             log.debug('view created org');
         } catch (e) {
             log.debug(e.toString());
             log.debug(e);
             throw e.toString()
         }
-
-
-        log.debug('====================================');
-        /*
-        // Find
-
-        const section2 = await models.section.findOne({
-            where: {
-                id: '0x0',
-            }
-        });
-        log.debug('view найденую section');
-        log.info(JSON.stringify(section.get(), null, 2));
-        log.debug('====================================');*/
-        // process.exit(0);
+        log.debug('==================/==================');
+        return orgid
     };
 
     const getStats = async () => {
@@ -85,14 +61,14 @@ module.exports = function (config, models) {
         segments = _.map(segments, segment => {
             segment = segment.get();
             segment.type = 'segment';
-            return orgid;
+            return segment;
         });
 
         return segments
     };
 
     return Promise.resolve({
-        loadOrganizationIntoDB,
+        upsertOrgid,
         getStats,
         getOrgId,
         getOrgIds,

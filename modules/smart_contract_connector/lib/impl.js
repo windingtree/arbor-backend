@@ -19,6 +19,7 @@ module.exports = function (config, cached) {
             environment: envName,
             segments: segments,
             address: orgAddress,
+            orgid: orgAddress,
         };
 
         // on-chain
@@ -93,7 +94,7 @@ module.exports = function (config, cached) {
         }
         log.info(JSON.stringify(res, null, 2));
 
-        await cached.loadOrganizationIntoDB(res);
+        await cached.upsertOrgid(res);
 
 
         //await Snapshot.upsert(res);
