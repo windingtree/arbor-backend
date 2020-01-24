@@ -5,6 +5,7 @@
     "@windingtree/trust-clue-lif-deposit": "^0.2.0",
     "@windingtree/wt-contracts": "^0.8.2",
     "chalk": "^3.0.0",
+    "command-line-args": "^5.1.1",
     "cors": "^2.8.5",
     "ethereumjs-abi": "^0.6.8",
     "express": "^4.17.1",
