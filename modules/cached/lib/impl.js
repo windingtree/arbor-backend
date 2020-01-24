@@ -66,13 +66,11 @@ module.exports = function (config, models) {
     };
 
     const getOrgIds = async (filters) => {
-        const {owner} = filters;
-        debugger;
-        let orgids = await models.orgid.findAll({
-            where: {
-                owner
-            }
-        });
+        let where = {};
+        if (filters) {
+            where = {...filters}
+        }
+        let orgids = await models.orgid.findAll({where});
         orgids = _.map(orgids, orgid => {
             orgid = orgid.get();
             orgid.type = 'orgid';

@@ -37,6 +37,9 @@ log4js.configure({
     const ctx = await bootstrap(configFn, predefinedModules);
     log.info('Modules loaded:', JSON.stringify(Object.keys(ctx)));
     log.info('Init rest...');
+    /*
+    Add listener for orgs creation and update
+    */
     ctx.rest.init();
     log.info('Done!');
 })();

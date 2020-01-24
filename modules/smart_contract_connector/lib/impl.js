@@ -98,7 +98,7 @@ module.exports = function (config, cached) {
 
         //await Snapshot.upsert(res);
 
-        console.log('done.');
+        log.debug('done.');
 
         return res;
     };
@@ -152,54 +152,65 @@ module.exports = function (config, cached) {
         }
     };
 
-    const listenEnvironmentEvents = async (envName) => {
+    const refreshProvider =  (web3Obj, providerUrl) => {
+        let retries = 0;
+
+        function retry(event) {
+            if (event) {
+                log.debug('Web3 provider disconnected or errored.');
+                retries += 1;
+
+                if (retries > 5) { //TODO: check if retry working
+                    log.debug(`Max retries of 5 exceeding: ${retries} times tried`);
+                    return setTimeout(refreshProvider, 5000)
+                }
+            } else {
+                refreshProvider(web3Obj, providerUrl)
+            }
+
+            return null
+        }
+
+        const provider = new Web3.providers.WebsocketProvider(providerUrl);
+
+        provider.on('end', () => {
+                log.debug("Connection ended");
+                retry()
+            }
+        );
+        provider.on('error', () => retry());
+
+        web3Obj.setProvider(provider);
+
+        log.debug('New Web3 provider initiated');
+
+        return provider
+    };
+
+    const setEntrypoint = async (envName, web3obj) => {
         if (!config().environments[envName]) {
             throw 'Unknown environment';
         }
         const environment = config().environments[envName];
-        const web3 = await new Web3();
 
-        function refreshProvider(web3Obj, providerUrl) {
-            let retries = 0;
 
-            function retry(event) {
-                if (event) {
-                    log.debug('Web3 provider disconnected or errored.');
-                    retries += 1;
 
-                    if (retries > 5) { //TODO: check if retry working
-                        log.debug(`Max retries of 5 exceeding: ${retries} times tried`);
-                        return setTimeout(refreshProvider, 5000)
-                    }
-                } else {
-                    refreshProvider(web3Obj, providerUrl)
-                }
 
-                return null
-            }
-
-            const provider = new Web3.providers.WebsocketProvider(providerUrl);
-
-            provider.on('end', () => {
-                    log.debug("Connection ended");
-                    retry()
-                }
-            );
-            provider.on('error', () => retry());
-
-            web3Obj.setProvider(provider);
-
-            log.debug('New Web3 provider initiated');
-
-            return provider
-        }
-
-        let wssProvider = refreshProvider(web3, "wss://ropsten.infura.io/ws/v3/c525e4af99fc411e88fa17092008ce26");
+        let wssProvider = refreshProvider(web3obj, `wss://ropsten.infura.io/ws/v3/${environment.infuraId}`);
         const entrypoint = await Entrypoint.at(environment.entrypoint);
         entrypoint.setProvider(wssProvider);
+        return entrypoint
+    };
+
+    const listenEnvironmentEvents = async (envName) => {
+        const web3 = await new Web3();
+        const environment = config().environments[envName];
+        const entrypoint = await setEntrypoint(envName, web3);
         let factory = await entrypoint.methods.getOrganizationFactory();
+        debugger;
         let factoryCalled = await factory.call();
         const abi = OrganizationFactory.schema.abi;
+        debugger;
         let contract = await new web3.eth.Contract(abi, factoryCalled);
         const currentBlock = await web3.eth.getBlockNumber();
         log.debug(`currentBlock: ${currentBlock}`);
@@ -221,7 +232,7 @@ module.exports = function (config, cached) {
                 if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
                     log.debug(`OrganizationCreated:${createdAddress}`);
-                    const organization = await scrapeOrganization(createdAddress, 'test_segment', 'madrid', environment.provider, environment.lifDeposit);
+                    const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
                 } else {
                     log.debug("Not an OrganizationCreated event")
                 }
@@ -239,11 +250,59 @@ module.exports = function (config, cached) {
 
     };
 
+    const listenOrganizationChangeEvents = async (envName, orgId) => {
+
+        const web3 = await new Web3();
+        const entrypoint = setEntrypoint(envName, web3);
+        const environment = config().environments[envName];
+        debugger;
+        let contract = await new web3.eth.Contract(orgId);
+debugger;
+        const currentBlock = await web3.eth.getBlockNumber();
+        log.debug(`currentBlockForOrg: ${currentBlock}`);
+        contract.events
+            .allEvents(
+                {
+                    fromBlock: currentBlock
+                },
+                async (error, event) => {
+                    /*
+                    if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
+                        log.debug("Loaded OrgCreated event")
+                    }*/
+                    //log.debug(event);
+                }
+            )
+            .on('data', async (event) => {
+                log.debug("=================== Data ==========");
+                debugger;
+               /* if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
+                    let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
+                    log.debug(`OrganizationCreated:${createdAddress}`);
+                    const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
+                } else {
+                    log.debug("Not an OrganizationCreated event")
+                }
+*/
+                //log.debug(event);
+            })
+            .on('changed', (event) => {
+                log.debug("=================== Changed ===================");
+                log.debug(event);
+            })
+            .on('error', (error) => {
+                log.debug(error);
+            });
+
+
+    };
 
     return Promise.resolve({
         scrapeEnvironment,
         scrapeOrganization,
         listenEnvironmentEvents,
+        listenOrganizationChangeEvents,
+        refreshProvider,
         visibleForTests: {
             scrapeOrganization,
             prepareToScrapeDirectory
