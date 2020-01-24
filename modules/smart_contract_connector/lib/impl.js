@@ -208,10 +208,8 @@ module.exports = function (config, cached) {
         const environment = config().environments[envName];
         const entrypoint = await setEntrypoint(envName, web3);
         let factory = await entrypoint.methods.getOrganizationFactory();
-        debugger;
         let factoryCalled = await factory.call();
         const abi = OrganizationFactory.schema.abi;
-        debugger;
         let contract = await new web3.eth.Contract(abi, factoryCalled);
         const currentBlock = await web3.eth.getBlockNumber();
         log.debug(`currentBlock: ${currentBlock}`);
@@ -256,15 +254,14 @@ module.exports = function (config, cached) {
         const web3 = await new Web3();
         const entrypoint = setEntrypoint(envName, web3);
         const environment = config().environments[envName];
-        debugger;
-        let contract = await new web3.eth.Contract(orgId);
-debugger;
+        const abi = Organization.schema.abi;
+        let contract = await new web3.eth.Contract(abi, orgId);
         const currentBlock = await web3.eth.getBlockNumber();
         log.debug(`currentBlockForOrg: ${currentBlock}`);
         contract.events
             .allEvents(
                 {
-                    fromBlock: currentBlock
+                    fromBlock: 0
                 },
                 async (error, event) => {
                     /*
@@ -276,7 +273,6 @@ debugger;
             )
             .on('data', async (event) => {
                 log.debug("=================== Data ==========");
-                debugger;
                /* if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
                     log.debug(`OrganizationCreated:${createdAddress}`);
