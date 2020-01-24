@@ -153,7 +153,7 @@ module.exports = function (config, cached) {
         }
     };
 
-    const refreshProvider =  (web3Obj, providerUrl) => {
+    const refreshProvider = (web3Obj, providerUrl) => {
         let retries = 0;
 
         function retry(event) {
@@ -193,8 +193,6 @@ module.exports = function (config, cached) {
             throw 'Unknown environment';
         }
         const environment = config().environments[envName];
-
-
 
 
         let wssProvider = refreshProvider(web3obj, `wss://ropsten.infura.io/ws/v3/${environment.infuraId}`);
@@ -273,15 +271,34 @@ module.exports = function (config, cached) {
             )
             .on('data', async (event) => {
                 log.debug("=================== Data ==========");
-               /* if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
-                    let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
-                    log.debug(`OrganizationCreated:${createdAddress}`);
-                    const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
-                } else {
-                    log.debug("Not an OrganizationCreated event")
+                const events = config().savedSha3;
+                switch (event.raw.topics[0]) {
+                    case events["OwnershipTransferred"][1]:
+                        log.debug('OwnershipTransferred');
+                        break;
+                    case events["OrgJsonUriChanged"][1]:
+                        log.debug('OrgJsonUriChanged');
+                        break;
+                    case events["OrgJsonHashChanged"][1]:
+                        log.debug('OrgJsonHashChanged');
+                        break;
+                    case events["AssociatedKeyAdded"][1]:
+                        log.debug('AssociatedKeyAdded');
+                        break;
+                    case events["AssociatedKeyRemoved"][1]:
+                        log.debug('AssociatedKeyRemoved');
+                        break;
+                    case "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea":
+                        let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
+                        log.debug(`OrganizationCreated:${createdAddress}`);
+                        const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
+                        break;
+                    default :
+                        log.debug("Not a supported event");
+                        log.debug(event.raw.topics[0]);
+                        log.debug("================================");
+                        log.debug(event);
                 }
-*/
-                //log.debug(event);
             })
             .on('changed', (event) => {
                 log.debug("=================== Changed ===================");
@@ -298,6 +315,7 @@ module.exports = function (config, cached) {
         scrapeEnvironment,
         scrapeOrganization,
         listenEnvironmentEvents,
+        setEntrypoint,
         listenOrganizationChangeEvents,
         refreshProvider,
         visibleForTests: {
