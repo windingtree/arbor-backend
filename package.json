@@ -33,7 +33,8 @@
     "sequelize-cli": "^5.5.1"
   },
   "jest": {
-    "testResultsProcessor": "jest-teamcity-reporter"
+    "testResultsProcessor": "jest-teamcity-reporter",
+    "testPathIgnorePatterns": ["/node_modules/", "/test.js"]
   },
   "scripts": {
     "test": "jest"
