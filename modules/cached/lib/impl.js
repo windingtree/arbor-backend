@@ -20,7 +20,7 @@ module.exports = function (config, models) {
         log.debug('==================/==================');
         log.info(JSON.stringify(organizationInfo, null, 2));
         try {
-            const organization = await models.orgid.create(organizationInfo);
+            const organization = await models.orgid.upsert(organizationInfo, { orgid: organizationInfo.orgid });
             log.info(JSON.stringify(organization.get(), null, 2));
             log.debug('view created org');
         } catch (e) {

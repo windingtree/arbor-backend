@@ -37,6 +37,15 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
+    section.upsert = (values, condition) => (
+        section.findOne({ where: condition })
+            .then((obj) => {
+                if (obj) {
+                    return obj.update(values);
+                }
+                return section.create(values);
+            })
+    );
 
     // TABLE 3 of 4: orgids
     const orgid = sequelize.define('orgid',
@@ -83,6 +92,16 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
+    orgid.upsert = (values, condition) => (
+        orgid.findOne({ where: condition })
+            .then((obj) => {
+                if (obj) {
+                    return obj.update(values);
+                }
+                return orgid.create(values);
+            })
+    );
+
     // TABLE 4 of 4: stats
     const stats = sequelize.define('stats',
         {
