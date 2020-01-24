@@ -7,7 +7,10 @@ const fs = require('fs');
 const logger = require('./logger');
 const https = require('https');
 const chalk = require('chalk');
-
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const path = require('path');
+const { version, homepage } = require('../../../package.json');
 
 // const appLogger = require('../../../utils/logger');
 // const routeInitialize = require('../../../routes');
@@ -45,6 +48,13 @@ module.exports = function (cfg, models) {
     app.use(require('morgan')('dev'));
     app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
     app.use(require('body-parser').json({ limit: '50mb' }));
+
+    // Swagger docs.
+    const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));
+    swaggerDocument.servers = [{ url: `https://${config.app.host}${(config.app.host && config.app.host !== 80) ? `:${config.app.host}` : ``}` }];
+    swaggerDocument.info.version = version;
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 
     const routers = [];
     const middlewares = [];

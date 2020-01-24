@@ -1,0 +1,192 @@
+swagger: '2.0'
+info:
+  description: This is an API
+  version: 1.0.0
+  title: API
+  # put the contact info for your development or API team
+  contact:
+    email: oleg.kudrenko@gmail.com
+
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+# tags are used for organizing operations
+tags:
+  - name: example
+    description: example calls
+
+paths:
+  /stats:
+    get:
+      summary: get Arbor stats
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            type: object
+            properties:
+              org_ids_tqy:
+                type: number
+                example: 100
+              sections_qty:
+                type: number
+                example: 5
+              dao_qty:
+                type: number
+                example: 0
+  /orgids:
+    get:
+      summary: searches orgids
+      operationId: searchOrgids
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: searchString
+          description: pass an optional search string for looking up inventory
+          required: false
+          type: string
+        - in: query
+          name: skip
+          description: number of records to skip for pagination
+          type: integer
+          format: int32
+          minimum: 0
+        - in: query
+          name: limit
+          description: maximum number of records to return
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 50
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/OrgIdRow'
+        400:
+          description: bad input parameter
+  /orgids/{address}:
+    get:
+      summary: searches orgid
+      operationId: searchOrgId
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: address
+          description: ethereum address of organisation
+          required: true
+          type: string
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            $ref: '#/definitions/OrgIdRow'
+        400:
+          description: bad input parameter
+  /segments:
+    get:
+      summary: return all segments
+      produces:
+        - application/json
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Segment'
+        400:
+          description: bad input parameter
+  /json:
+    post:
+      summary: save json to arbor storage
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: owner
+          description: ethereum address of owner
+          required: true
+          type: string
+        - in: query
+          name: sign
+          description: json signed in MetaMask
+          required: true
+          type: string
+        - in: query
+          name: json
+          description: json file
+          required: true
+          type: string
+      responses:
+        200:
+          description: file successfully saved
+          schema:
+            type: object
+            properties:
+              keccad256:
+                type: string
+                example: 'dbd72c3b837432d06fde69764e847bf007a17dcacf1517ebc9d73e515b4f941c'
+        400:
+          description: bad input parameter
+
+definitions:
+  OrgIdRow:
+    type: object
+    properties:
+      address:
+        type: string
+        format: ethereum
+        example: '0x01aB00E70fe830FeA31523D745C9f4Bb72191655'
+      hash:
+        type: string
+        format: keccak256
+        example: dbd72c3b837432d06fde69764e847bf007a17dcacf1517ebc9d73e515b4f941c
+      json_link:
+        type: string
+        format: url
+        example: 'https://gist.githubusercontent.com/kuzyakiev/37e6551f25a7ab00663350e5892ea588/raw/7bb24212b899f1f337eafeac66d13f80c490ccb0/org.id.json'
+      json:
+        $ref: '#/definitions/OrgIdLegalEntity'
+  OrgIdLegalEntity:
+    properties:
+      dataFormatVersion:
+        type: string
+        example: 0.2.3
+      updatedAt:
+        type: string
+        format: date-time
+        example: '2020-01-10T00:32:00.000Z'
+      legalEntity:
+        $ref: '#/definitions/LegalEntity'
+  LegalEntity:
+    properties:
+      name:
+        type: string
+        example: 'PRE Oleg Kudrenko'
+      contact:
+        type: string
+        format: email
+        example: 'oleg.kudrenko@gmail.com'
+  Segment:
+    type: object
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: string
+        format: ethereum
+        example: '0xd290f1ee6c544b0190e6d701748f0851'
+      name:
+        type: string
+        example: Hotels
+# Added by API Auto Mocking Plugin
+basePath: /docs/
+schemes:
+  - https
