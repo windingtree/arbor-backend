@@ -68,6 +68,18 @@ module.exports = function (sequelize) {
             owner: {
                 type: Sequelize.STRING(66),
             },
+            associatedKeys: {
+                type: Sequelize.TEXT,
+                get() {
+                    if (this.getDataValue('associatedKeys')) {
+                        return JSON.parse(this.getDataValue('associatedKeys'));
+                    }
+                    return null;
+                },
+                set(value) {
+                    this.setDataValue('associatedKeys', JSON.stringify(value));
+                },
+            },
             orgJsonHash: {
                 type: Sequelize.STRING(66)
             },
@@ -83,6 +95,9 @@ module.exports = function (sequelize) {
             dateUpdated: {
                 type: Sequelize.DATE
             },
+            lastBlockUpdated: {
+                type: Sequelize.INTEGER
+            },
             //name: {},
             trust_clues_site_data: {type: Sequelize.STRING(512)}, //TODO make for <types>
             trust_clues_site_valid: {type: Sequelize.BOOLEAN},
@@ -92,6 +107,7 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
+
     orgid.upsert = (values, condition) => (
         orgid.findOne({ where: condition })
             .then((obj) => {

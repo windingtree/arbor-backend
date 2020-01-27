@@ -61,6 +61,18 @@ module.exports = {
                     owner: {
                         type: Sequelize.STRING(66),
                     },
+                    associatedKeys: {
+                        type: Sequelize.TEXT,
+                        get() {
+                            if (this.getDataValue('associatedKeys')) {
+                                return JSON.parse(this.getDataValue('associatedKeys'));
+                            }
+                            return null;
+                        },
+                        set(value) {
+                            this.setDataValue('associatedKeys', JSON.stringify(value));
+                        },
+                    },
                     orgJsonHash: {
                         type: Sequelize.STRING(66)
                     },
@@ -75,6 +87,9 @@ module.exports = {
                     },
                     dateUpdated: {
                         type: Sequelize.DATE
+                    },
+                    lastBlockUpdated: {
+                        type: Sequelize.INTEGER
                     },
                     createdAt: {
                         type: Sequelize.DATE

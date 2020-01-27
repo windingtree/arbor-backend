@@ -36,11 +36,11 @@ module.exports = function (config, cached) {
             res.orgJsonHash = await organization.methods.orgJsonHash().call();
             const createdBlock = await organization.methods.created().call();
             const resolvedBlock = await web3.eth.getBlock(createdBlock);
-
+            res.lastBlockUpdated = parseInt(createdBlock);
             res.dateCreated = resolvedBlock ? new Date(resolvedBlock.timestamp * 1000) : new Date();
             const associatedKeys = await organization.methods.getAssociatedKeys().call();
             associatedKeys.shift(); // remove zeroeth item
-            res.associatedKeys = associatedKeys.join(',');
+            res.associatedKeys = associatedKeys//.join(',');
 
             // off-chain
             process.stdout.write('off-chain... ');
@@ -211,6 +211,8 @@ module.exports = function (config, cached) {
         let contract = await new web3.eth.Contract(abi, factoryCalled);
         const currentBlock = await web3.eth.getBlockNumber();
         log.debug(`currentBlock: ${currentBlock}`);
+        createListenersForAllOrganizations(envName);
+        log.debug('=========================== Listen to all events ==============================')
         contract.events
             .allEvents(
                 {
@@ -230,6 +232,7 @@ module.exports = function (config, cached) {
                     let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
                     log.debug(`OrganizationCreated:${createdAddress}`);
                     const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
+                    listenOrganizationChangeEvents(envName, organization.orgid);
                 } else {
                     log.debug("Not an OrganizationCreated event")
                 }
@@ -246,68 +249,91 @@ module.exports = function (config, cached) {
 
 
     };
+    const createListenersForAllOrganizations = async (envName) => {
+        const organizations = await cached.getOrgIds();
+        log.debug(typeof organizations);
+        let allEvents = {};
+        for (let i = 0; i < organizations.length; i++) {
+            log.debug(`==============${organizations[i].orgid}=============`);
+            allEvents[organizations[i].orgid] = await listenOrganizationChangeEvents(envName, organizations[i].orgid);
+        }
+        log.debug(allEvents);
+    };
+
 
     const listenOrganizationChangeEvents = async (envName, orgId) => {
-
+        log.debug(`============== Creating listener for ${orgId} ============`);
         const web3 = await new Web3();
         const entrypoint = setEntrypoint(envName, web3);
         const environment = config().environments[envName];
         const abi = Organization.schema.abi;
         let contract = await new web3.eth.Contract(abi, orgId);
-        const currentBlock = await web3.eth.getBlockNumber();
+        const currentBlock = (await cached.getOrgId(orgId)).lastBlockUpdated;
         log.debug(`currentBlockForOrg: ${currentBlock}`);
-        contract.events
-            .allEvents(
-                {
-                    fromBlock: 0
-                },
-                async (error, event) => {
-                    /*
-                    if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
-                        log.debug("Loaded OrgCreated event")
-                    }*/
-                    //log.debug(event);
-                }
-            )
-            .on('data', async (event) => {
-                log.debug("=================== Data ==========");
-                const events = config().savedSha3;
-                switch (event.raw.topics[0]) {
-                    case events["OwnershipTransferred"][1]:
-                        log.debug('OwnershipTransferred');
-                        break;
-                    case events["OrgJsonUriChanged"][1]:
-                        log.debug('OrgJsonUriChanged');
-                        break;
-                    case events["OrgJsonHashChanged"][1]:
-                        log.debug('OrgJsonHashChanged');
-                        break;
-                    case events["AssociatedKeyAdded"][1]:
-                        log.debug('AssociatedKeyAdded');
-                        break;
-                    case events["AssociatedKeyRemoved"][1]:
-                        log.debug('AssociatedKeyRemoved');
-                        break;
-                    case "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea":
-                        let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
-                        log.debug(`OrganizationCreated:${createdAddress}`);
-                        const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
-                        break;
-                    default :
-                        log.debug("Not a supported event");
-                        log.debug(event.raw.topics[0]);
-                        log.debug("================================");
-                        log.debug(event);
-                }
-            })
-            .on('changed', (event) => {
-                log.debug("=================== Changed ===================");
-                log.debug(event);
-            })
-            .on('error', (error) => {
-                log.debug(error);
-            });
+        try {
+            contract.events
+                .allEvents(
+                    {
+                        fromBlock: 0//currentBlock
+                    },
+                    async (error, event) => {
+                        /*
+                        if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
+                            log.debug("Loaded OrgCreated event")
+                        }*/
+                        //log.debug(event);
+                    }
+                )
+                .on('data', async (event) => {
+                    log.debug("=================== Data ===================");
+                    //const events = config().savedSha3;
 
+                    switch (event.event) {
+                        case "OwnershipTransferred":
+                            const newOwner = event.returnValues.newOwner;
+                            cached.upsertOrgid({orgid: orgId, owner: newOwner});
+                            log.debug('OwnershipTransferred');
+                            break;
+                        case "OrgJsonUriChanged":
+                            const newOrgJsonUri = event.returnValues.newOrgJsonUri;
+                            cached.upsertOrgid({orgid: orgId, orgJsonUri: newOrgJsonUri});
+                            log.debug('OrgJsonUriChanged');
+                            break;
+                        case "OrgJsonHashChanged":
+                            const newOrgJsonHash = event.returnValues.newOrgJsonHash;
+                            cached.upsertOrgid({orgid: orgId, orgJsonHash: newOrgJsonHash});
+                            log.debug('OrgJsonHashChanged');
+                            break;
+                        case "AssociatedKeyAdded":
+                            const associatedKey = event.returnValues.associatedKey;
+                            let orgid = await cached.getOrgIdRaw(orgId);
+                            const keys = orgid.associatedKeys ? [associatedKey, ...orgid.associatedKeys] : [associatedKey];
+                            await orgid.update({associatedKeys: _.uniq(keys)});
+                            log.debug('AssociatedKeyAdded');
+                            break;
+                        case "AssociatedKeyRemoved":
+                            const associatedKeyRemoved = event.returnValues.associatedKey;
+                            log.debug('AssociatedKeyRemoved');
+                            break;
+                        /*case "OrganizationCreated":
+                            let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
+                            log.debug(`OrganizationCreated:${createdAddress}`);
+                            const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
+                            break;*/
+                        default :
+                            log.debug(`Not a supported event: ${event.event}`);
+                    }
+                })
+                .on('changed', (event) => {
+                    log.debug("=================== Changed ===================");
+                    log.debug(event);
+                })
+                .on('error', (error) => {
+                    log.debug(error);
+                });
+        } catch (e) {
+            log.debug(e.message);
+        }
 
     };
 
@@ -315,6 +341,7 @@ module.exports = function (config, cached) {
         scrapeEnvironment,
         scrapeOrganization,
         listenEnvironmentEvents,
+        createListenersForAllOrganizations,
         setEntrypoint,
         listenOrganizationChangeEvents,
         refreshProvider,

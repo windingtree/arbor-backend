@@ -16,9 +16,21 @@ const {loadMainModuleSystem} = require('./loadMainModules');
         provider: 'https://ropsten.infura.io/v3/7697444efe2e4751bc2f20f7f4549c36',
         active: true,
     };
-    //let web3 = new Web3('wss://ropsten.infura.io/ws');
+    if (process.argv.indexOf("-p") !== -1) {
+        log.debug('Scraping');
+        await smart_contract_connector.scrapeEnvironment('madrid', environment)
+    }
+    if (process.argv.indexOf("-l") !== -1) {
+        log.debug('Listening');
+        await smart_contract_connector.listenEnvironmentEvents('madrid');}
 
-    smart_contract_connector.listenOrganizationChangeEvents('madrid', "0x190f57468f354d4dda89ef771544ea29ba7b32cb");
+    //let web3 = new Web3('wss://ropsten.infura.io/ws');
+    //const scrapedOrgs = await smart_contract_connector.scrapeEnvironment('madrid', environment);
+
+    setInterval(() => {
+        log.debug('5s')
+    }, 5000);
+
     /* let events = await contract.getPastEvents("allEvents", {fromBlock: 0});
      log.debug("=================== Previous Events ===================");
      log.debug(events);*/

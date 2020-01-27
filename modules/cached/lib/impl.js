@@ -10,6 +10,7 @@ module.exports = function (config, models) {
         let orgid;
         try {
             orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
+            orgid.set().associatedKeys(organizationPayload.associatedKeys);
             log.info(JSON.stringify(orgid.get(), null, 2));
             log.debug('view created org');
         } catch (e) {
@@ -17,7 +18,7 @@ module.exports = function (config, models) {
             log.debug(e);
             throw e.toString()
         }
-        log.debug('==================/==================');
+
         return orgid
     };
 
@@ -39,6 +40,11 @@ module.exports = function (config, models) {
         }
 
         return orgid
+    };
+
+    const getOrgIdRaw = async (address) => {
+        let orgid = await models.orgid.findOne({where: {orgid: address}});
+        return orgid;
     };
 
     const getOrgIds = async (filters) => {
@@ -71,6 +77,7 @@ module.exports = function (config, models) {
         upsertOrgid,
         getStats,
         getOrgId,
+        getOrgIdRaw,
         getOrgIds,
         getSegments
     });
