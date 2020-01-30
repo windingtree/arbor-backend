@@ -2,106 +2,96 @@
 module.exports = {
     up: (queryInterface, Sequelize) => {
         return Promise.all([
-            // 1.
             queryInterface
-                .createTable('managers', {
-                    address: {
-                        primaryKey: true,
-                        type: Sequelize.STRING(42),
-                    },
-                    org_id: {
-                        unique: true,
-                        type: Sequelize.STRING(42),
-                    },
-                    role: {
-                        type: Sequelize.STRING(5),
-                    },
-                    createdAt: {
-                        type: Sequelize.DATE
-                    },
-                    updatedAt: {
-                        type: Sequelize.DATE
-                    }
-                }),
-            // 2.
-            queryInterface
-                .createTable('sections', {
-                    id: {
-                        primaryKey: true,
-                        type: Sequelize.STRING(42)
-                    },
-                    name: {
-                        type: Sequelize.STRING(256)
-                    },
-                    createdAt: {
-                        type: Sequelize.DATE
-                    },
-                    updatedAt: {
-                        type: Sequelize.DATE
-                    }
-                }),
-            // 3.
-            queryInterface
-                .createTable('orgids', {
-                    orgid: {
-                        primaryKey: true,
-                        type: Sequelize.STRING(42)
-                    },
-                    environment: {
-                        type: Sequelize.STRING(42)
-                    },
-                    section: {
-                        type: Sequelize.STRING(42),
-                        references: {
-                            model: 'sections', // name of Target model
-                            key: 'id', // key in Target model that we're referencing
+                .createTable(
+                    'orgids',
+                    {
+                        ////// on chain
+                        orgid: {
+                            primaryKey: true,
+                            type: Sequelize.STRING(42)
                         },
-                        onUpdate: 'CASCADE',
-                    },
-                    owner: {
-                        type: Sequelize.STRING(66),
-                    },
-                    associatedKeys: {
-                        type: Sequelize.TEXT,
-                        get() {
-                            if (this.getDataValue('associatedKeys')) {
-                                return JSON.parse(this.getDataValue('associatedKeys'));
-                            }
-                            return null;
+                        owner: {
+                            type: Sequelize.STRING(42),
                         },
-                        set(value) {
-                            this.setDataValue('associatedKeys', JSON.stringify(value));
+                        subsidiaries: {
+                            type: Sequelize.BLOB
                         },
-                    },
-                    orgJsonHash: {
-                        type: Sequelize.STRING(66)
-                    },
-                    orgJsonUri: {
-                        type: Sequelize.STRING(1024)
-                    },
-                    orgJsonContent: {
-                        type: Sequelize.BLOB
-                    },
-                    dateCreated: {
-                        type: Sequelize.DATE
-                    },
-                    dateUpdated: {
-                        type: Sequelize.DATE
-                    },
-                    lastBlockUpdated: {
-                        type: Sequelize.INTEGER
-                    },
-                    createdAt: {
-                        type: Sequelize.DATE
-                    },
-                    updatedAt: {
-                        type: Sequelize.DATE
-                    },
-                    //name: {},
-                    trust_clues_site_data: {type: Sequelize.STRING(512)}, //TODO make for <types>
-                    trust_clues_site_valid: {type: Sequelize.BOOLEAN},
+                        parent: {
+                            type: Sequelize.STRING(1024)
+                        },
+                        ////// off chain
+                        orgidType: {
+                            type: Sequelize.STRING(42),
+                        },
+                        directory: {
+                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown'),
+                        },
+                        name: {
+                            type: Sequelize.STRING(42),
+                        },
+                        avatar: {
+                            type: Sequelize.BLOB
+                        },
+                        country: {
+                            type: Sequelize.STRING(42),
+                        },
+                        proofsQty: {
+                            type: Sequelize.TINYINT
+                        },
+                        isWebsiteProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isSslProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isSocialFBProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isSocialTWProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isSocialIGProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isSocialLNProved: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
+                        isJsonValid: {
+                            type: Sequelize.BOOLEAN,
+                            defaultValue: false
+                        },
 
-                }),
+                        jsonHash: {
+                            type: Sequelize.STRING(66)
+                        },
+                        jsonUri: {
+                            type: Sequelize.STRING(1024)
+                        },
+                        jsonContent: {
+                            type: Sequelize.BLOB
+                        },
+                        jsonCheckedAt: {
+                            type: Sequelize.DATE
+                        },
+                        jsonUpdatedAt: {
+                            type: Sequelize.DATE
+                        },
+
+                        createdAt: {
+                            type: Sequelize.DATE
+                        },
+                        updatedAt: {
+                            type: Sequelize.DATE
+                        },
+                    }
+            ),
             // 4.
             queryInterface
                 .createTable('stats', {
@@ -122,17 +112,17 @@ module.exports = {
                     },
                     updatedAt: {
                         type: Sequelize.DATE
-                    }
+                    },
                 })
         ]);
     },
 
     down: (queryInterface, Sequelize) => {
         return Promise.all([
-            queryInterface.dropTable('managers'),
             queryInterface.dropTable('orgids'),
             queryInterface.dropTable('stats'),
-            queryInterface.dropTable('sections')
+            queryInterface.dropTable('managers'), // old one
+            queryInterface.dropTable('sections')  // old one
         ]);
     }
 };

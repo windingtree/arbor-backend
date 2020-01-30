@@ -1,106 +1,97 @@
 const Sequelize = require('sequelize');
 module.exports = function (sequelize) {
-    // TABLE 1 of 2: managers
-    const manager = sequelize.define('manager',
-        {
-            address: {
-                primaryKey: true,
-                type: Sequelize.STRING(42),
-            },
-            org_id: {
-                unique: true,
-                type: Sequelize.STRING(42),
-            },
-            role: {
-                type: Sequelize.STRING(5),
+    const jsonGetterSetter = (field) => ({
+        type: Sequelize.TEXT,
+        get() {
+            if (this.getDataValue(field)) {
+                return JSON.parse(this.getDataValue(field));
             }
-
+            return null;
         },
-        {
-            timestamps: true,
-        }
-    );
-
-    // TABLE 2 of 4: sections
-    const section = sequelize.define('section',
-        {
-            id: {
-                primaryKey: true,
-                type: Sequelize.STRING(42)
-            },
-            name: {
-                type: Sequelize.STRING(256)
-            }
-
+        set(val) {
+            if (typeof val === 'object') this.setDataValue(field, JSON.stringify(val));
+            else this.setDataValue(field, null);
         },
-        {
-            timestamps: true,
-        }
-    );
-    section.upsert = (values, condition) => (
-        section.findOne({ where: condition })
-            .then((obj) => {
-                if (obj) {
-                    return obj.update(values);
-                }
-                return section.create(values);
-            })
-    );
-
-    // TABLE 3 of 4: orgids
+    });
+    // TABLE 1 of 2: orgids
     const orgid = sequelize.define('orgid',
         {
             orgid: {
                 primaryKey: true,
                 type: Sequelize.STRING(42)
             },
-            environment: {
-                type: Sequelize.STRING(42)
-            },
-            section: {
-                type: Sequelize.STRING(42),
-                references: {
-                    model: 'sections', // name of Target model
-                    key: 'id', // key in Target model that we're referencing
-                },
-                onUpdate: 'CASCADE',
-            },
             owner: {
-                type: Sequelize.STRING(66),
+                type: Sequelize.STRING(42),
             },
-            associatedKeys: {
-                type: Sequelize.TEXT,
-                get() {
-                    if (this.getDataValue('associatedKeys')) {
-                        return JSON.parse(this.getDataValue('associatedKeys'));
-                    }
-                    return null;
-                },
-                set(value) {
-                    this.setDataValue('associatedKeys', JSON.stringify(value));
-                },
-            },
-            orgJsonHash: {
-                type: Sequelize.STRING(66)
-            },
-            orgJsonUri: {
-                type: Sequelize.STRING(1024)
-            },
-            orgJsonContent: {
+            subsidiaries: {
                 type: Sequelize.BLOB
             },
-            dateCreated: {
+            parent: {
+                type: Sequelize.STRING(1024)
+            },
+            ////// off chain
+            orgidType: {
+                type: Sequelize.STRING(42),
+            },
+            directory: {
+                type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown'),
+            },
+            name: {
+                type: Sequelize.STRING(42),
+            },
+            avatar: {
+                type: Sequelize.BLOB
+            },
+            country: {
+                type: Sequelize.STRING(42),
+            },
+            proofsQty: {
+                type: Sequelize.TINYINT
+            },
+            isWebsiteProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isSslProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isSocialFBProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isSocialTWProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isSocialIGProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isSocialLNProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            isJsonValid: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+
+            jsonHash: {
+                type: Sequelize.STRING(66)
+            },
+            jsonUri: {
+                type: Sequelize.STRING(1024)
+            },
+            jsonContent: {
+                type: Sequelize.BLOB
+            },
+            jsonCheckedAt: {
                 type: Sequelize.DATE
             },
-            dateUpdated: {
+            jsonUpdatedAt: {
                 type: Sequelize.DATE
             },
-            lastBlockUpdated: {
-                type: Sequelize.INTEGER
-            },
-            //name: {},
-            trust_clues_site_data: {type: Sequelize.STRING(512)}, //TODO make for <types>
-            trust_clues_site_valid: {type: Sequelize.BOOLEAN},
 
         },
         {
@@ -118,7 +109,7 @@ module.exports = function (sequelize) {
             })
     );
 
-    // TABLE 4 of 4: stats
+    // TABLE 2 of 2: stats
     const stats = sequelize.define('stats',
         {
             id: {
@@ -140,5 +131,5 @@ module.exports = function (sequelize) {
         }
     );
 
-    return [manager, orgid, stats, section];
+    return [orgid, stats];
 };
