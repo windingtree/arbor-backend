@@ -12,29 +12,29 @@ module.exports = {
                             type: Sequelize.STRING(42)
                         },
                         owner: {
-                            type: Sequelize.STRING(42),
+                            type: Sequelize.STRING(42)
                         },
                         subsidiaries: {
-                            type: Sequelize.BLOB
+                            type: Sequelize.TEXT
                         },
                         parent: {
-                            type: Sequelize.STRING(1024)
+                            type: Sequelize.TEXT
                         },
                         ////// off chain
                         orgidType: {
-                            type: Sequelize.STRING(42),
+                            type: Sequelize.STRING(42)
                         },
                         directory: {
-                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown'),
+                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown')
                         },
                         name: {
-                            type: Sequelize.STRING(42),
+                            type: Sequelize.STRING(42)
                         },
                         avatar: {
                             type: Sequelize.BLOB
                         },
                         country: {
-                            type: Sequelize.STRING(42),
+                            type: Sequelize.STRING(42)
                         },
                         proofsQty: {
                             type: Sequelize.TINYINT
@@ -75,7 +75,7 @@ module.exports = {
                             type: Sequelize.STRING(1024)
                         },
                         jsonContent: {
-                            type: Sequelize.BLOB
+                            type: Sequelize.TEXT
                         },
                         jsonCheckedAt: {
                             type: Sequelize.DATE

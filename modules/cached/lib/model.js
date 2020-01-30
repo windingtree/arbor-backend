@@ -21,29 +21,25 @@ module.exports = function (sequelize) {
                 type: Sequelize.STRING(42)
             },
             owner: {
-                type: Sequelize.STRING(42),
+                type: Sequelize.STRING(42)
             },
-            subsidiaries: {
-                type: Sequelize.BLOB
-            },
-            parent: {
-                type: Sequelize.STRING(1024)
-            },
+            subsidiaries: jsonGetterSetter('subsidiaries'),
+            parent: jsonGetterSetter('parent'),
             ////// off chain
             orgidType: {
-                type: Sequelize.STRING(42),
+                type: Sequelize.STRING(42)
             },
             directory: {
-                type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown'),
+                type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown')
             },
             name: {
-                type: Sequelize.STRING(42),
+                type: Sequelize.STRING(42)
             },
             avatar: {
                 type: Sequelize.BLOB
             },
             country: {
-                type: Sequelize.STRING(42),
+                type: Sequelize.STRING(42)
             },
             proofsQty: {
                 type: Sequelize.TINYINT
@@ -83,9 +79,7 @@ module.exports = function (sequelize) {
             jsonUri: {
                 type: Sequelize.STRING(1024)
             },
-            jsonContent: {
-                type: Sequelize.BLOB
-            },
+            jsonContent: jsonGetterSetter('jsonContent'),
             jsonCheckedAt: {
                 type: Sequelize.DATE
             },
