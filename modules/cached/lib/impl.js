@@ -10,7 +10,6 @@ module.exports = function (config, models) {
         let orgid;
         try {
             orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
-            orgid.set().associatedKeys(organizationPayload.associatedKeys);
             log.info(JSON.stringify(orgid.get(), null, 2));
             log.debug('view created org');
         } catch (e) {
