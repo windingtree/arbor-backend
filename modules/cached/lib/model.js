@@ -86,7 +86,6 @@ module.exports = function (sequelize) {
             jsonUpdatedAt: {
                 type: Sequelize.DATE
             },
-
         },
         {
             timestamps: true,

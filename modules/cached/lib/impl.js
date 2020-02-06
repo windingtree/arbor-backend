@@ -51,7 +51,7 @@ module.exports = function (config, models) {
         if (filters) {
             where = {...filters}
         }
-        let orgids = await models.orgid.findAll({where});
+        let orgids = await models.orgid.findAll({ attributes: ['orgid', 'subsidiaries', 'parent', 'orgidType', 'directory', 'name', 'avatar', 'proofsQty'], where });
         orgids = _.map(orgids, orgid => {
             orgid = orgid.get();
             orgid.type = 'orgid';

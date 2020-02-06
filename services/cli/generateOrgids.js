@@ -71,7 +71,7 @@ const generateJSON = (type = "legalEntity") => {
         "orgid": orgid_address,
         "created": "2019-01-01T13:10:02.251Z",
         "updated": new Date().toJSON(),
-        [type === "legalEntity" ? "legalEntity" : type]: entity,
+        [type === "legalEntity" ? "legalEntity" : 'entity']: entity,
         "trust": {
             "assertions": [
                 {
@@ -94,14 +94,6 @@ const generateJSON = (type = "legalEntity") => {
         },
     };
 };
-
-console.log(JSON.stringify(generateJSON('hotel', ), null, 2));
-
-
-const generateEntity = (owner, parentOrgid) => {
-
-};
-
 
 const generatePayload = (owner, allowedTypes) => {
     const jsonContent = generateJSON(_.sample(allowedTypes));
@@ -142,45 +134,36 @@ const generatePayload = (owner, allowedTypes) => {
     };
 };
 
-const generate = (structure) => {
-    _.each(structure, async childs => {
-        const owner = random_address();
-        const { orgid } = await generateLegalEntity(owner);
-        _.map(Array(childs), () => generateEntity(owner, orgid));
-
-    })
-};
-
-//generate([0,1,4]);
-
-
 (async () => {
     const {config, cached} = await loadMainModuleSystem();
     console.log(JSON.stringify(config().modificationTime, null, 2));
 
-
-
     const generateLegalEntity = (owner) => {
         const organizationPayload = generatePayload(owner, ['legalEntity']);
         organizationPayload.subsidiaries = [];
-
         return cached.upsertOrgid(organizationPayload);
-
-        /*
-            subsidiaries_orgids [need update on add/delete subsidiaries - smart contracts]
-            subsidiaries_qty [need update on add/delete subsidiaries - smart contracts]
-            parent_orgid
-            parent_orgid_name [need update on parent change]
-            parent_orgid_proofs_qty [need update on parent change]
-        */
     };
 
+    const generateEntity = (owner, parent) => {
+        const organizationPayload = generatePayload(owner, ['hotel', 'airline']);
+        organizationPayload.parent = parent;
+        return cached.upsertOrgid(organizationPayload);
+    };
 
+    const generate = async (structure, masterOwner) => {
+        await Promise.all(_.map(structure, async childs => {
+            const owner = masterOwner ? masterOwner : random_address();
+            const mainOrg = await generateLegalEntity(owner);
+            const { orgid, name, proofsQty } = mainOrg;
+            const subsidiaries = await Promise.all(_.map(Array(childs), async () => {
+                const { orgid: subOrgid } = await generateEntity(owner, { orgid, name, proofsQty });
+                return subOrgid;
+            }));
+            await mainOrg.update({ subsidiaries })
+        }));
+    };
 
+    await generate([0,1,4]);
 
-
-    const owner = random_address();
-    const orgid = await generateLegalEntity(owner);
-    console.log(JSON.stringify(orgid.get(), null, 4));
     process.exit(0);
 })();
