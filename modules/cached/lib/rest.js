@@ -1,3 +1,4 @@
+const Joi = require('@hapi/joi');
 const express = require('express');
 const router = express.Router();
 const filenameSplitted = __filename.split(__filename[0]);
@@ -5,6 +6,13 @@ const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.len
 log.level = 'debug';
 
 module.exports = function (rest, cached) {
+    const pageSchema = {
+        page: Joi.object({
+            number: Joi.number(),
+            size: Joi.number()
+        })
+    };
+
     router.get('/stats', async (req, res) => {
         try {
             const stats = await cached.getStats();
@@ -17,9 +25,19 @@ module.exports = function (rest, cached) {
 
     router.get('/orgids/:address', async (req, res) => {
         const {address} = req.params;
+        const self = req.protocol + '://' + req.get('host') + req.originalUrl;
         try {
             const orgId = await cached.getOrgId(address);
-            res.status(200).send({data: {type: 'orgid', ...orgId}})
+            const json = {
+                links: {
+                    self,
+                },
+                data: {
+                    type: 'orgid',
+                    ...orgId
+                }
+            };
+            res.status(200).send(json)
         } catch (e) {
             const {code, json} = rest.decorateError(e);
             return res.status(code).send(json)
@@ -38,14 +56,14 @@ module.exports = function (rest, cached) {
     });
 
     router.get('/orgids', async (req, res) => {
-        const filters = req.body;
-        try {
-            const orgIds = await cached.getOrgIds(filters);
-            res.status(200).send({data: orgIds})
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
-        }
+        const orgidsQuerySchema = Joi.object({
+            'orgidType': Joi.string().valid(...['hotel', 'airline', 'legalEntity']),
+            'name': Joi.string(),
+            'owner': Joi.string(),
+            ...pageSchema
+        });
+
+        return rest.extendWithPagination(req, res, cached.getOrgIds, orgidsQuerySchema);
     });
 
     router.get('/segments', async (req, res) => {

@@ -1,5 +1,4 @@
 const _ = require('lodash');
-const chalk = require('chalk');
 const Web3 = require('web3');
 const commandLineArgs = require('command-line-args');
 const { loadMainModuleSystem } = require('../../loadMainModules');
@@ -8,12 +7,11 @@ const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').
 log.level = 'trace';
 
 const optionDefinitions = [
-    { name: 'env', alias: 'e', type: String },
-    { name: 'qty', alias: 'q', type: Number },
+    { name: 'owner', alias: 'o', type: String }
 ];
 const cliOptions = commandLineArgs(optionDefinitions);
 
-const { env, qty } = cliOptions;
+const { owner } = cliOptions;
 
 const names = {
     legalEntity: require('./generative/legalEntityNames'),
@@ -163,7 +161,7 @@ const generatePayload = (owner, allowedTypes) => {
         }));
     };
 
-    await generate([0,1,4]);
+    await generate([0,1,4], owner);
 
     process.exit(0);
 })();

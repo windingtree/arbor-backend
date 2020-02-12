@@ -1,4 +1,6 @@
 const _ = require('lodash');
+const url = require('url');
+const qs = require('qs');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'trace';
 const app = require('express')();
@@ -6,17 +8,16 @@ const cors = require('cors');
 const fs = require('fs');
 const logger = require('./logger');
 const https = require('https');
-const chalk = require('chalk');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
-const { version, homepage } = require('../../../package.json');
+const { version } = require('../../../package.json');
 
 // const appLogger = require('../../../utils/logger');
 // const routeInitialize = require('../../../routes');
 
 
-module.exports = function (cfg, models) {
+module.exports = function (cfg) {
     const config = cfg();
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
@@ -27,7 +28,7 @@ module.exports = function (cfg, models) {
     };
 
     // eslint-disable-line no-unused-vars
-    const server = https.createServer(config.app.sslOptions, app).listen(config.app.port, /* config.app.host, */ (err) => {
+    https.createServer(config.app.sslOptions, app).listen(config.app.port, /* config.app.host, */ (err) => {
         if (err) {
             return logger.error(err.message);
         }
@@ -39,6 +40,7 @@ module.exports = function (cfg, models) {
     app.options('*', cors());
     app.use(cors());
     app.use((req, res, next) => {
+        res.header('Content-Type', 'application/vnd.api+json');
         res.header('Access-Control-Allow-Origin', '*');
         res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
@@ -87,11 +89,87 @@ module.exports = function (cfg, models) {
         return { code, json }
     };
 
+    const getUrlGenerator = (protocol, host, pathname) => (search) => {
+        return url.format({
+            protocol,
+            host,
+            pathname,
+            search: qs.stringify(search)
+        })
+    };
+
+    const DEFAULT_PAGE_SIZE = 25;
+
+    const fillQuery = (query) => {
+        if (typeof query.page !== 'object') return { ...query, page: { number:1, size: DEFAULT_PAGE_SIZE }};
+        query.page.number = (!query.page.number) ? 1 : parseInt(query.page.number, 10);
+        query.page.size =  (!query.page.size) ? DEFAULT_PAGE_SIZE : parseInt(query.page.size, 10);
+        return query
+    };
+
+    const validateJoiSchema = (schema, data) => {
+        const { error, value } = schema.validate(data);
+        if (error) {
+            const { details } = error;
+            throw _.map(details, ({message, path}) => ({
+                "status": 422,
+                "title": "Invalid Attribute",
+                "source": {
+                    "pointer": path.join('/')
+                },
+                "detail": message
+            }));
+        }
+        return value;
+    };
+
+    const extendWithPagination = async (req, res, rowCountPromise, querySchema) => {
+        const query = fillQuery(req.query);
+        const { size, number: pageNumber } = query.page;
+        const getUrl = getUrlGenerator(req.protocol, req.get('host'), req.route ? req.baseUrl + req.route.path : req.baseUrl);
+        const self = getUrl(query);
+        try {
+            const where = querySchema ? validateJoiSchema(querySchema, query) : query;
+
+            const { rows, count } = await rowCountPromise(where);
+            const lastPage = Math.ceil(count / size);
+            const json = {
+                meta: {
+                    page: pageNumber,
+                    per_page: size,
+                    total: count,
+                    pages: lastPage
+                },
+                links: {
+                    self,
+                },
+                data: rows
+            };
+            if (pageNumber !== 1) {
+                json.links.first = getUrl(_.extend(query, { page: { number: 1, size } }));
+                json.links.prev = getUrl(_.extend(query, { page: { number: pageNumber - 1, size } }));
+            }
+            if (pageNumber !== lastPage) {
+                json.links.last = getUrl(_.extend(query, { page: { number: lastPage, size } }));
+                json.links.next = getUrl(_.extend(query, { page: { number: pageNumber + 1, size } }));
+            }
+            res.status(200).send(json)
+        } catch (e) {
+            if (!(e instanceof Error) && Array.isArray(e)) { // Joe Schema Validation
+                return res.status(422).send({ errors: e });
+            }
+
+            const {code, json} = decorateError(e);
+            return res.status(code).send(json)
+        }
+    };
+
     return Promise.resolve({
         addRouter,
         addMiddleware,
         init,
-        decorateError
+        decorateError,
+        extendWithPagination
     });
 
 };

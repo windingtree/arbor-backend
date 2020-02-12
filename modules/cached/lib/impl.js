@@ -1,5 +1,6 @@
 const _ = require('lodash');
-const chalk = require('chalk');
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -42,23 +43,25 @@ module.exports = function (config, models) {
     };
 
     const getOrgIdRaw = async (address) => {
-        let orgid = await models.orgid.findOne({where: {orgid: address}});
-        return orgid;
+        return models.orgid.findOne({where: {orgid: address}});
     };
 
-    const getOrgIds = async (filters) => {
-        let where = {};
-        if (filters) {
-            where = {...filters}
-        }
-        let orgids = await models.orgid.findAll({ attributes: ['orgid', 'subsidiaries', 'parent', 'orgidType', 'directory', 'name', 'avatar', 'proofsQty'], where });
+    const getOrgIds = async (query) => {
+        const { page, ...where } = query;
+        if (where.name) where.name = {
+            [Op.like]: `%${where.name}%`
+        };
+        const limit = _.get(page, 'size', 25);
+        const offset = (_.get(page, 'number', 1)-1) * limit;
+
+        let { rows:orgids, count } = await models.orgid.findAndCountAll({ attributes: ['orgid', 'subsidiaries', 'parent', 'orgidType', 'directory', 'name', 'avatar', 'proofsQty', 'owner'], where, offset, limit });
         orgids = _.map(orgids, orgid => {
             orgid = orgid.get();
             orgid.type = 'orgid';
             orgid.orgJsonContent = orgid.orgJsonContent && orgid.orgJsonContent.toString ? orgid.orgJsonContent.toString() : orgid.orgJsonContent;
             return orgid;
         });
-        return orgids
+        return { rows: orgids, count }
     };
 
     const getSegments = async () => {
