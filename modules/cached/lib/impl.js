@@ -47,14 +47,25 @@ module.exports = function (config, models) {
     };
 
     const getOrgIds = async (query) => {
-        const { page, ...where } = query;
+        const { page, sort, ...where } = query;
+        let order = [];
+        if (sort) {
+            order = sort.split(',').map((sortCriteria) => {
+                let sortDirection = 'ASC';
+                if(sortCriteria[0] === '-') {
+                    sortDirection = 'DESC';
+                    sortCriteria = sortCriteria.substr(1)
+                }
+                return [sortCriteria, sortDirection];
+            })
+        }
         if (where.name) where.name = {
             [Op.like]: `%${where.name}%`
         };
         const limit = _.get(page, 'size', 25);
         const offset = (_.get(page, 'number', 1)-1) * limit;
 
-        let { rows:orgids, count } = await models.orgid.findAndCountAll({ attributes: ['orgid', 'subsidiaries', 'parent', 'orgidType', 'directory', 'name', 'avatar', 'proofsQty', 'owner'], where, offset, limit });
+        let { rows:orgids, count } = await models.orgid.findAndCountAll({ attributes: ['orgid', 'subsidiaries', 'parent', 'orgidType', 'directory', 'name', 'avatar', 'proofsQty', 'owner'], where, order, offset, limit });
         orgids = _.map(orgids, orgid => {
             orgid = orgid.get();
             orgid.type = 'orgid';
