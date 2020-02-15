@@ -59,9 +59,21 @@ module.exports = function (config, models) {
                 return [sortCriteria, sortDirection];
             })
         }
-        if (where.name) where.name = {
-            [Op.like]: `%${where.name}%`
-        };
+        if (where.name) {
+            if (where.name.length === 42 && where.name[0] === '0' && where.name[1] === 'x') {
+                where[Op.or] = {
+                    orgid: where.name,
+                    parent: {
+                        [Op.like]: `%${where.name}%`
+                    }
+                };
+                delete where.name;
+            } else {
+                where.name = {
+                    [Op.like]: `%${where.name}%`
+                }
+            }
+        }
         const limit = _.get(page, 'size', 25);
         const offset = (_.get(page, 'number', 1)-1) * limit;
 
