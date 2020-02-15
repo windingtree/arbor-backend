@@ -65,7 +65,8 @@ module.exports = function (config, models) {
                     orgid: where.name,
                     parent: {
                         [Op.like]: `%${where.name}%`
-                    }
+                    },
+                    owner: where.name
                 };
                 delete where.name;
             } else {
