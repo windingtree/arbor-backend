@@ -26,6 +26,13 @@
         "rest": true
       }
     },
+    "orgids_json": {
+      "module": "./modules/orgids_json",
+      "dependencies": ["config"],
+      "parameters": {
+        "rest": true
+      }
+    },
     "smart_contract_connector": {
       "module": "./modules/smart_contract_connector",
       "dependencies": ["config", "cached"]

@@ -16,6 +16,10 @@
       "services/cli",
       "test.js",
       "yarn.lock",
+      "uploads",
+      "uploads/**/**/**/*.json",
+      "uploads/**/**/*.json",
+      "uploads/**/*.json",
 
       "*___jb_tmp___",
       "modules/**/test/**_test.js",

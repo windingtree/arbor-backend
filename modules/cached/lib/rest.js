@@ -13,16 +13,6 @@ module.exports = function (rest, cached) {
         })
     };
 
-    router.get('/stats', async (req, res) => {
-        try {
-            const stats = await cached.getStats();
-            res.status(200).send({data: stats});
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
-        }
-    });
-
     router.get('/orgids/:address', async (req, res) => {
         const {address} = req.params;
         const self = req.protocol + '://' + req.get('host') + req.originalUrl;

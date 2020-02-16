@@ -22,15 +22,6 @@ module.exports = function (config, models) {
         return orgid
     };
 
-    const getStats = async () => {
-        let stats = await models.stats.findAll();
-        stats = stats && stats.get ? stats.get() : stats;
-        return {
-            type: 'stats',
-            ...stats
-        }
-    };
-
     const getOrgId = async (address) => {
         let orgid = await models.orgid.findOne({where: {orgid: address}});
         if (orgid) {
@@ -101,7 +92,6 @@ module.exports = function (config, models) {
 
     return Promise.resolve({
         upsertOrgid,
-        getStats,
         getOrgId,
         getOrgIdRaw,
         getOrgIds,

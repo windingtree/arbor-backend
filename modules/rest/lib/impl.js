@@ -3,6 +3,7 @@ const url = require('url');
 const qs = require('qs');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'trace';
+const express = require('express');
 const app = require('express')();
 const cors = require('cors');
 const fs = require('fs');
@@ -50,6 +51,8 @@ module.exports = function (cfg) {
     app.use(require('morgan')('dev'));
     app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
     app.use(require('body-parser').json({ limit: '50mb' }));
+
+    app.use('/uploads', express.static('uploads'));
 
     // Swagger docs.
     const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));

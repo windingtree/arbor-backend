@@ -4,7 +4,8 @@ package-lock.json
 node_modules/
 .vscode/
 .env
-/uploads/
+uploads/
+!uploads/.gitkeep
 modules/config/lib/*.json
 !modules/config/lib/expected_*.json
 dump.rdb
