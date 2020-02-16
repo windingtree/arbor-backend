@@ -25,9 +25,9 @@
       "modules/**/test/**_test.js",
       "pm2/**--dev.json"
     ],
-    "output": "~/.pm2/logs/backend--dev-out.log",
-    "error":  "~/.pm2/logs/backend--dev-error.log",
-    "log":    "~/.pm2/logs/backend--dev-merged.log",
+    "output": "~/.pm2/logs/server--dev-out.log",
+    "error":  "~/.pm2/logs/server--dev-error.log",
+    "log":    "~/.pm2/logs/server--dev-merged.log",
     "env": {
       "NODE_ENV": "development",
       "name": "server-dev"
