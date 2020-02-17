@@ -1,11 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const multer  = require('multer');
-const upload = multer({ dest: 'uploads/tmp/' });
 const url = require('url');
 const filenameSplitted = __filename.split(__filename[0]);
 const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.length - 3]}/${filenameSplitted[filenameSplitted.length - 1].replace('.js', '')}`);
 log.level = 'debug';
+
+const fileFilter = function(req, file, cb) {
+    if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF|json|JSON)$/)) {
+        req.fileValidationError = 'Only images and JSON files are allowed!';
+        return cb(new Error('Only image files and JSON are allowed!'), false);
+    }
+    cb(null, true);
+};
+
+const upload = multer({ dest: 'uploads/tmp/', fileFilter: fileFilter });
+
 
 module.exports = function (rest, orgids_json) {
     const baseUrl = (req) =>  url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });

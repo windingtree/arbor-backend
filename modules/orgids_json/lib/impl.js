@@ -41,10 +41,13 @@ module.exports = function (config) {
 
     const saveMedia = async (mediaType, options, baseUrl) => {
         let {address, file, id} = options;
+        log.debug(file);
         log.debug(`saveMedia(${mediaType}, ${address}), file, baseUrl`);
         if (id === "undefined") id = 'wizard';
         const dir = `uploads/${address}/mediaType/${id}/`;
-        const fileName = `1.jpg`; //${keccak256(file)}
+        const fileName = file.originalname;
+
+        //${keccak256(file)}
         await copyFromTemp(dir, fileName, file);
         return `${baseUrl}${dir}${fileName}`;
     };
