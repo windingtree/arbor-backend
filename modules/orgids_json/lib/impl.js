@@ -15,14 +15,19 @@ module.exports = function (config) {
 
     const writeFile = async (dir, fileName, content) => {
         await mkdir(dir, {recursive: true});
-        //fs.writeFileSync(dir + fileName, content);
-        await fs.copyFile(content.path, dir + fileName, (err, result) => {
-            if (err) {
-                log.debug(err.message)
-            }
-            fs.unlink(content.path, () => {});
-        });
+        fs.writeFileSync(dir + fileName, content);
+    };
 
+    const copyFromTemp = async (dir, fileName, content) => {
+        await mkdir(dir, {recursive: true});
+        await fs.copyFile(content.path, dir + fileName, (error, _) => {
+            if (error) {
+                log.debug(error.message)
+            }
+            fs.unlink(content.path, (err) => {
+                if (err) log.debug(err.message);
+            });
+        });
     };
 
     const saveJson = async (address, orgidJson, baseUrl) => {
@@ -40,7 +45,7 @@ module.exports = function (config) {
         if (id === "undefined") id = 'wizard';
         const dir = `uploads/${address}/mediaType/${id}/`;
         const fileName = `1.jpg`; //${keccak256(file)}
-        await writeFile(dir, fileName, file);
+        await copyFromTemp(dir, fileName, file);
         return `${baseUrl}${dir}${fileName}`;
     };
 
