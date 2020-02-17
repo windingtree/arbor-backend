@@ -30,6 +30,7 @@ module.exports = function (rest, orgids_json) {
 
     router.post('/media', upload.single('media'), async (req, res) => {
         try {
+            debugger;
             console.log(req.body);
             console.log(req.file);
 

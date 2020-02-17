@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { keccak256 } = require('js-sha3');
+const {keccak256} = require('js-sha3');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -13,9 +13,16 @@ module.exports = function (config) {
         })
     };
 
-    const writeFile = async (dir, file, content) => {
-        await mkdir(dir, { recursive: true });
-        fs.writeFileSync(dir + file, content);
+    const writeFile = async (dir, fileName, content) => {
+        await mkdir(dir, {recursive: true});
+        //fs.writeFileSync(dir + fileName, content);
+        await fs.copyFile(content.path, dir + fileName, (err, result) => {
+            if (err) {
+                log.debug(err.message)
+            }
+            fs.unlink(content.path, () => {});
+        });
+
     };
 
     const saveJson = async (address, orgidJson, baseUrl) => {
@@ -27,13 +34,13 @@ module.exports = function (config) {
         return `${baseUrl}${dir}${fileName}`;
     };
 
-    const saveMedia =  async (mediaType, options, baseUrl) => {
-        const { address, file, id } = options;
+    const saveMedia = async (mediaType, options, baseUrl) => {
+        let {address, file, id} = options;
         log.debug(`saveMedia(${mediaType}, ${address}), file, baseUrl`);
-        const orgidJsonString = JSON.stringify(file, null, 2);
-        const dir = `uploads/${address}/mediaType/${id ? id : 'wizard'}/`;
-        const fileName = `___.jpg`; //${keccak256(file)}
-        await writeFile(dir, fileName, orgidJsonString);
+        if (id === "undefined") id = 'wizard';
+        const dir = `uploads/${address}/mediaType/${id}/`;
+        const fileName = `1.jpg`; //${keccak256(file)}
+        await writeFile(dir, fileName, file);
         return `${baseUrl}${dir}${fileName}`;
     };
 
