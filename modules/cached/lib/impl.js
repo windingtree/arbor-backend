@@ -50,6 +50,12 @@ module.exports = function (config, models) {
                 return [sortCriteria, sortDirection];
             })
         }
+        if (where['parent.orgid']) {
+            where.parent = {
+                [Op.like]: `%${where['parent.orgid']}%`
+            };
+            delete where['parent.orgid'];
+        }
         if (where.name) {
             if (where.name.length === 42 && where.name[0] === '0' && where.name[1] === 'x') {
                 where[Op.or] = {
