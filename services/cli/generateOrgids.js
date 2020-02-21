@@ -109,7 +109,7 @@ const generateJSON = (type = "legalEntity") => {
         'facebook': { probability: 0.4, pattern: 'https://facebook.com/', position: 'after' },
         'telegram': { probability: 0.1, pattern: 'https://t.me/', position: 'after' },
         'twitter': { probability: 0.3, pattern: 'https://twitter.com/', position: 'after' },
-        'instagram': { probability: 0.45, pattern: 'https://twitter.com/', position: 'after' },
+        'instagram': { probability: 0.45, pattern: 'https://instagram.com/', position: 'after' },
         'linkedin': { probability: 0.4, pattern: 'https://linkedin.com/', position: 'after' }
     };
 
