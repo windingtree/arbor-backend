@@ -9,7 +9,7 @@ module.exports = {
                         ////// on chain
                         orgid: {
                             primaryKey: true,
-                            type: Sequelize.STRING(42)
+                            type: Sequelize.STRING(66)
                         },
                         owner: {
                             type: Sequelize.STRING(42)
