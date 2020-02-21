@@ -51,7 +51,7 @@ module.exports = function (rest, cached) {
             'name': Joi.string(),
             'owner': Joi.string().length(42),
             'country': Joi.string().length(2),
-            'parent.orgid': Joi.string().length(42),
+            'parent.orgid': Joi.string().length(66),
             'sort': Joi.string(), //?sort=primary-address.street-1,-name
             ...pageSchema
         });
