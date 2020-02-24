@@ -32,10 +32,22 @@ module.exports = function (sequelize) {
             directory: {
                 type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown')
             },
+            director: {
+                type: Sequelize.STRING(42),
+                defaultValue: '0x0000000000000000000000000000000000000000'
+            },
+            state: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
+            directorConfirmed: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
+            },
             name: {
                 type: Sequelize.STRING(42)
             },
-            avatar: {
+            logo: {
                 type: Sequelize.BLOB
             },
             country: {
@@ -43,6 +55,10 @@ module.exports = function (sequelize) {
             },
             proofsQty: {
                 type: Sequelize.TINYINT
+            },
+            isLifProved: {
+                type: Sequelize.BOOLEAN,
+                defaultValue: false
             },
             isWebsiteProved: {
                 type: Sequelize.BOOLEAN,
@@ -73,10 +89,10 @@ module.exports = function (sequelize) {
                 defaultValue: false
             },
 
-            jsonHash: {
+            orgJsonHash: {
                 type: Sequelize.STRING(66)
             },
-            jsonUri: {
+            orgJsonUri: {
                 type: Sequelize.STRING(1024)
             },
             jsonContent: jsonGetterSetter('jsonContent'),

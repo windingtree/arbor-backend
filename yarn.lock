@@ -624,6 +624,13 @@
     truffle-hdwallet-provider "0.0.3"
     zeppelin-solidity "^1.6.0"
 
+"@windingtree/org.id@^0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@windingtree/org.id/-/org.id-0.10.0.tgz#a8b6f5cca999cb71a4c968f16037037eea152c76"
+  integrity sha512-+eGdFMsAZHfjuE1M4KQXjgP4w78zdwzmy+dIrAO8gOaFjJdJaW5c5n9RY+0ap4uJ260QxVNkBc5GbelDDvvLKg==
+  dependencies:
+    openzeppelin-solidity "2.5.0"
+
 "@windingtree/trust-clue-lif-deposit@^0.2.0":
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@windingtree/trust-clue-lif-deposit/-/trust-clue-lif-deposit-0.2.0.tgz#ec485620d0c16c24e1e8538416f0334cdc559854"
@@ -5675,6 +5682,11 @@ openzeppelin-solidity@2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-2.3.0.tgz#1ab7b4cc3782a5472ed61eb740c56a8bfdd74119"
   integrity sha512-QYeiPLvB1oSbDt6lDQvvpx7k8ODczvE474hb2kLXZBPKMsxKT1WxTCHBYrCU7kS7hfAku4DcJ0jqOyL+jvjwQw==
+
+openzeppelin-solidity@2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-2.5.0.tgz#829a9bcfc928619dd96c44bd893b180044ff51aa"
+  integrity sha512-I0yRC3nff9Kn2LDWuz02fuw0EuomVQ9Z8lHzdqh8P9BiOUzIk8frQRxn/a1Kva3StF6hwPP+Dh3/SQ2ily1Pow==
 
 openzeppelin-solidity@^2.2.0:
   version "2.4.0"

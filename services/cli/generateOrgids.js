@@ -167,7 +167,7 @@ const generatePayload = (owner, allowedTypes) => {
         orgid,
         orgidType,
         keccak256,
-        jsonUri: `https://my-personal-site.com/${orgid}.json`,
+        orgJsonUri: `https://my-personal-site.com/${orgid}.json`,
         jsonContent,
         jsonCheckedAt,
         jsonUpdatedAt,
