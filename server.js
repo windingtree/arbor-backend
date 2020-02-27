@@ -41,5 +41,6 @@ log4js.configure({
     Add listener for orgs creation and update
     */
     ctx.rest.init();
+    ctx.smart_contract_connector.listenEvents();
     log.info('Done!');
 })();

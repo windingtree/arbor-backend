@@ -352,6 +352,11 @@
     "@types/istanbul-reports" "^1.1.1"
     "@types/yargs" "^13.0.0"
 
+"@openzeppelin/contracts@2.5.0":
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-2.5.0.tgz#e327a98ba1d26b7756ff62885a0aa0967a375449"
+  integrity sha512-t3jm8FrhL9tkkJTofkznTqo/XXdHi21w5yXwalEnaMOp22ZwZ0f/mmKdlgMMLPFa6bSVHbY88mKESwJT/7m5Lg==
+
 "@resolver-engine/core@^0.2.1":
   version "0.2.1"
   resolved "https://registry.yarnpkg.com/@resolver-engine/core/-/core-0.2.1.tgz#0d71803f6d3b8cb2e9ed481a1bf0ca5f5256d0c0"
@@ -624,12 +629,12 @@
     truffle-hdwallet-provider "0.0.3"
     zeppelin-solidity "^1.6.0"
 
-"@windingtree/org.id@^0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@windingtree/org.id/-/org.id-0.10.0.tgz#a8b6f5cca999cb71a4c968f16037037eea152c76"
-  integrity sha512-+eGdFMsAZHfjuE1M4KQXjgP4w78zdwzmy+dIrAO8gOaFjJdJaW5c5n9RY+0ap4uJ260QxVNkBc5GbelDDvvLKg==
+"@windingtree/org.id@^0.11.1":
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/@windingtree/org.id/-/org.id-0.11.1.tgz#9cf6591dcc2550a6fe867673c28bc21706fb51d4"
+  integrity sha512-7WrYdn5eMbRbRg6bp8udT/hW+X+neujpinKgGzi3JhGG8P3iYFZ/+Dz2+X1tlOTfmNNFG8dRRNeOR3pjzFU+gg==
   dependencies:
-    openzeppelin-solidity "2.5.0"
+    "@openzeppelin/contracts" "2.5.0"
 
 "@windingtree/trust-clue-lif-deposit@^0.2.0":
   version "0.2.0"
@@ -5682,11 +5687,6 @@ openzeppelin-solidity@2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-2.3.0.tgz#1ab7b4cc3782a5472ed61eb740c56a8bfdd74119"
   integrity sha512-QYeiPLvB1oSbDt6lDQvvpx7k8ODczvE474hb2kLXZBPKMsxKT1WxTCHBYrCU7kS7hfAku4DcJ0jqOyL+jvjwQw==
-
-openzeppelin-solidity@2.5.0:
-  version "2.5.0"
-  resolved "https://registry.yarnpkg.com/openzeppelin-solidity/-/openzeppelin-solidity-2.5.0.tgz#829a9bcfc928619dd96c44bd893b180044ff51aa"
-  integrity sha512-I0yRC3nff9Kn2LDWuz02fuw0EuomVQ9Z8lHzdqh8P9BiOUzIk8frQRxn/a1Kva3StF6hwPP+Dh3/SQ2ily1Pow==
 
 openzeppelin-solidity@^2.2.0:
   version "2.4.0"

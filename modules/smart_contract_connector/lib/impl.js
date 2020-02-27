@@ -1,4 +1,5 @@
 const _ = require('lodash');
+const chalk = require('chalk');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 const fetch = require('node-fetch');
@@ -21,7 +22,7 @@ module.exports = function (config, cached) {
 
     const getEnvironment = () => {
         const { currentEnvironment, environments } = config();
-        const provider = new Web3.providers.HttpProvider(environments[currentEnvironment].provider);
+        const provider = new Web3.providers.WebsocketProvider(`wss://ropsten.infura.io/ws/v3/${environments[currentEnvironment].infuraId}`);
         const web3 = new Web3(provider);
 
         return Object.assign({}, environments[currentEnvironment], { provider, web3 });
@@ -59,9 +60,10 @@ module.exports = function (config, cached) {
         return orgidContract.methods.getSubsidiaries(orgid).call();
     };
 
-    const parseOrganization = async (orgid) => {
+    const parseOrganization = async (orgid, parentOrganization) => {
+        log.debug('[.]', chalk.blue('parseOrganization'), orgid);
         const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed } = await getOrganization(orgid);
-        const subsidiaries = (parentEntity === orgid0x) ? [] : await getSubsidiaries(orgid);
+        const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);
         if (parentEntity !== orgid0x) {
             // ... update parent trust recursive
         }
@@ -83,9 +85,10 @@ module.exports = function (config, cached) {
         const directory = orgidType === 'legalEntity' ? 'legalEntity' : _.get(jsonContent, 'organizationalUnit.type', 'unknown');
         const name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');
         const logo = _.get(jsonContent,  'media.logo', undefined);
-        const parent = (parentEntity !== orgid0x) ? { orgid: parentEntity,/* name, proofsQty, */ } : undefined;
+        const parent = (parentEntity !== orgid0x) ? { orgid: parentEntity, name: parentOrganization.name, proofsQty: parentOrganization.proofsQty || 0 } : undefined;
         const country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address', '');
 
+        /*
         process.stdout.write('lif-deposit... ');
         let lifDepositValue;
         try {
@@ -97,7 +100,7 @@ module.exports = function (config, cached) {
             process.stdout.write('[ERROR]\n');
             log.debug(e.toString());
         }
-
+        */
         return {
             orgid,
             owner,
@@ -112,7 +115,7 @@ module.exports = function (config, cached) {
             logo,
             country,
             // proofsQty
-            isLifProved: !!lifDepositValue,
+            isLifProved: false /*!!lifDepositValue*/,
             // isWebsiteProved
             // isSslProved
             // isSocialFBProved
@@ -131,10 +134,72 @@ module.exports = function (config, cached) {
     const scrapeOrganizations = async () => {
         const organizations = await getOrganizationsList();
         console.log(organizations);
+
         for(let orgid of organizations) {
             const organization = await parseOrganization(orgid);
             await cached.upsertOrgid(organization);
+
+            if (organization.subsidiaries) {
+                console.log('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
+                for(let orgid of organization.subsidiaries) {
+                    let subOrganization = await parseOrganization(orgid, organization);
+                    await cached.upsertOrgid(subOrganization);
+                }
+            }
         }
+    };
+
+    const listenEvents = async () => {
+        log.debug('event listening started...');
+        const orgidContract = await getOrgidContract();
+        orgidContract.events
+            .allEvents(
+                {
+                    fromBlock: 7415496//currentBlock
+                },
+                async (error, event) => {
+                    console.log('allEvents cb', error, event ? event.event : event);
+                }
+            )
+            .on('data', async (event) => {
+                log.debug("=================== Data ===================");
+                let organization;
+                switch (event.event) {
+                    case "OrganizationCreated":
+                    case "OrganizationOwnershipTransferred":
+                    case "OrgJsonUriChanged":
+                    case "OrgJsonHashChanged":
+                        log.debug(event.event, event.returnValues);
+                        organization = await parseOrganization(event.returnValues.orgId);
+                        await cached.upsertOrgid(organization);
+                        break;
+                    case "SubsidiaryCreated":
+                        log.debug(event.event, event.returnValues);
+                        organization = await parseOrganization(event.returnValues.subOrgId);
+                        await cached.upsertOrgid(organization);
+                        organization = await parseOrganization(event.returnValues.parentOrgId);
+                        await cached.upsertOrgid(organization);
+                        break;
+                    case "LifDepositAdded":
+                    case "WithdrawalRequested":
+                    case "DepositWithdrawn":
+                        log.debug(event.event, event.returnValues);
+                        break;
+                    case "WithdrawDelayChanged":
+                        log.debug(event.event, event.returnValues);
+                        break;
+                    default :
+                        log.debug(`Not a supported event:`, event && event.event ? event.event : event);
+                }
+            })
+            .on('changed', (event) => {
+                log.debug("=================== Changed ===================");
+                log.debug(event);
+            })
+            .on('error', (error) => {
+                log.debug("=================== ERROR ===================");
+                log.debug(error);
+            });
     };
 
     const scrapeOrganization = async (orgAddress, segments, envName, providerAddress, lifDepositAddress) => {
@@ -461,6 +526,7 @@ module.exports = function (config, cached) {
 
     return Promise.resolve({
         scrapeOrganizations,
+        listenEvents,
 
         scrapeEnvironment,
         scrapeOrganization,

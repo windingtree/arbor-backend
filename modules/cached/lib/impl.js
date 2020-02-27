@@ -1,4 +1,5 @@
 const _ = require('lodash');
+const chalk = require('chalk');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
@@ -6,16 +7,14 @@ log.level = 'debug';
 
 module.exports = function (config, models) {
     const upsertOrgid = async (organizationPayload) => {
-        log.debug('going to create orgid:');
-        log.info(JSON.stringify(organizationPayload, null, 2));
+        log.debug('[.]', chalk.blue('upsertOrgid') , JSON.stringify(organizationPayload));
         let orgid;
         try {
             orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
-            log.info(JSON.stringify(orgid.get(), null, 2));
             log.debug('view created org');
         } catch (e) {
-            log.debug(e.toString());
-            log.debug(e);
+            log.warn('upsertOrgid error during orgid upsert:', e.toString());
+            log.debug('upsertOrgid error during orgid upsert:', e);
             throw e.toString()
         }
 
