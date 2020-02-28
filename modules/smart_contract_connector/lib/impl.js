@@ -1,18 +1,15 @@
 const _ = require('lodash');
 const chalk = require('chalk');
+const fetch = require('node-fetch');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
-const fetch = require('node-fetch');
+
+// SMART CONTRACTS
 const Web3 = require('web3');
 const lib = require('zos-lib');
 const Contracts = lib.Contracts;
 const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
-
-const OrganizationFactory = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'OrganizationFactory');
-const Organization = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'Organization');
 const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
-const Entrypoint = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'WindingTreeEntrypoint');
-const SegmentDirectory = Contracts.getFromNodeModules('@windingtree/wt-contracts', 'SegmentDirectory');
 
 module.exports = function (config, cached) {
 
@@ -28,12 +25,21 @@ module.exports = function (config, cached) {
         return Object.assign({}, environments[currentEnvironment], { provider, web3 });
     };
 
+    const getCurrentBlockNumber = async () => {
+        const { web3 } = getEnvironment();
+        return new Promise((resolve, reject) => {
+            web3.eth.getBlockNumber((err, data) => {
+                if(err) return reject(err);
+                resolve(data);
+            });
+        });
+    };
+
     const getOrgidContract = async () => {
         if (orgidContract) return orgidContract;
-        const environment = getEnvironment();
-        orgidContract = await OrgId.at(environment.orgidAddress);
-        orgidContract.setProvider(environment.web3.currentProvider);
-
+        const { web3, orgidAddress } = getEnvironment();
+        orgidContract = await OrgId.at(orgidAddress);
+        orgidContract.setProvider(web3.currentProvider);
         return orgidContract
     };
 
@@ -52,7 +58,13 @@ module.exports = function (config, cached) {
 
     const getOrganization = async (orgid) => {
         const orgidContract = await getOrgidContract();
-        return orgidContract.methods.getOrganization(orgid).call();
+        try {
+            return orgidContract.methods.getOrganization(orgid).call();
+        } catch (e) {
+            log.error(`Error during getting getOrganization ${orgid} from smartcontract`);
+            throw e;
+        }
+
     };
 
     const getSubsidiaries = async (orgid) => {
@@ -60,12 +72,12 @@ module.exports = function (config, cached) {
         return orgidContract.methods.getSubsidiaries(orgid).call();
     };
 
-    const parseOrganization = async (orgid, parentOrganization) => {
-        log.debug('[.]', chalk.blue('parseOrganization'), orgid);
+    const parseOrganization = async (orgid, parentOrganization = false) => {
+        log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
         const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed } = await getOrganization(orgid);
         const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);
-        if (parentEntity !== orgid0x) {
-            // ... update parent trust recursive
+        if (parentEntity !== orgid0x && parentOrganization === false) {
+            parentOrganization = parseOrganization(parentEntity);
         }
         // off-chain
         let jsonContent, orgJsonHashCalculated;
@@ -86,7 +98,7 @@ module.exports = function (config, cached) {
         const name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');
         const logo = _.get(jsonContent,  'media.logo', undefined);
         const parent = (parentEntity !== orgid0x) ? { orgid: parentEntity, name: parentOrganization.name, proofsQty: parentOrganization.proofsQty || 0 } : undefined;
-        const country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address', '');
+        const country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address.country', '');
 
         /*
         process.stdout.write('lif-deposit... ');
@@ -95,7 +107,7 @@ module.exports = function (config, cached) {
             const lifDepositContract = await getLifDepositContract();
             lifDepositValue = await lifDepositContract.methods.getDepositValue(orgid).call();
             process.stdout.write('[READ-OK]\n');
-            console.log('lifDepositValue', lifDepositValue);
+            log.debug('lifDepositValue', lifDepositValue);
         } catch (e) {
             process.stdout.write('[ERROR]\n');
             log.debug(e.toString());
@@ -133,14 +145,14 @@ module.exports = function (config, cached) {
 
     const scrapeOrganizations = async () => {
         const organizations = await getOrganizationsList();
-        console.log(organizations);
+        log.info('Scrape organizations:', organizations);
 
         for(let orgid of organizations) {
             const organization = await parseOrganization(orgid);
             await cached.upsertOrgid(organization);
 
             if (organization.subsidiaries) {
-                console.log('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
+                log.info('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
                 for(let orgid of organization.subsidiaries) {
                     let subOrganization = await parseOrganization(orgid, organization);
                     await cached.upsertOrgid(subOrganization);
@@ -149,392 +161,50 @@ module.exports = function (config, cached) {
         }
     };
 
+    const resolveOrgidEvent = async (event) => {
+        log.debug("=================== :EVENT: ===================");
+        log.debug(event.event ? event.event : event.raw, event.returnValues);
+        let organization, subOrganization;
+        switch (event.event) {
+            case "OrganizationCreated":
+            case "OrganizationOwnershipTransferred":
+            case "OrgJsonUriChanged":
+            case "OrgJsonHashChanged":
+                organization = await parseOrganization(event.returnValues.orgId);
+                await cached.upsertOrgid(organization);
+                break;
+            case "SubsidiaryCreated":
+                organization = await parseOrganization(event.returnValues.parentOrgId);
+                await cached.upsertOrgid(organization);
+                subOrganization = await parseOrganization(event.returnValues.subOrgId, organization);
+                await cached.upsertOrgid(subOrganization);
+                break;
+            case "LifDepositAdded":
+            case "WithdrawalRequested":
+            case "DepositWithdrawn":
+                break;
+            case "WithdrawDelayChanged":
+                break;
+            default :
+                log.debug(`this event do not have any reaction behavior`);
+        }
+    };
+
     const listenEvents = async () => {
-        log.debug('event listening started...');
         const orgidContract = await getOrgidContract();
+        const currentBlockNumber = await getCurrentBlockNumber();
+        log.debug(`event listening started...${chalk.grey(`(from block ${currentBlockNumber})`)}`);
         orgidContract.events
-            .allEvents(
-                {
-                    fromBlock: 7415496//currentBlock
-                },
-                async (error, event) => {
-                    console.log('allEvents cb', error, event ? event.event : event);
-                }
-            )
-            .on('data', async (event) => {
-                log.debug("=================== Data ===================");
-                let organization;
-                switch (event.event) {
-                    case "OrganizationCreated":
-                    case "OrganizationOwnershipTransferred":
-                    case "OrgJsonUriChanged":
-                    case "OrgJsonHashChanged":
-                        log.debug(event.event, event.returnValues);
-                        organization = await parseOrganization(event.returnValues.orgId);
-                        await cached.upsertOrgid(organization);
-                        break;
-                    case "SubsidiaryCreated":
-                        log.debug(event.event, event.returnValues);
-                        organization = await parseOrganization(event.returnValues.subOrgId);
-                        await cached.upsertOrgid(organization);
-                        organization = await parseOrganization(event.returnValues.parentOrgId);
-                        await cached.upsertOrgid(organization);
-                        break;
-                    case "LifDepositAdded":
-                    case "WithdrawalRequested":
-                    case "DepositWithdrawn":
-                        log.debug(event.event, event.returnValues);
-                        break;
-                    case "WithdrawDelayChanged":
-                        log.debug(event.event, event.returnValues);
-                        break;
-                    default :
-                        log.debug(`Not a supported event:`, event && event.event ? event.event : event);
-                }
-            })
-            .on('changed', (event) => {
-                log.debug("=================== Changed ===================");
-                log.debug(event);
-            })
-            .on('error', (error) => {
-                log.debug("=================== ERROR ===================");
-                log.debug(error);
-            });
-    };
-
-    const scrapeOrganization = async (orgAddress, segments, envName, providerAddress, lifDepositAddress) => {
-        const res = {
-            environment: envName,
-            segments: segments,
-            address: orgAddress,
-            orgid: orgAddress,
-        };
-
-        // on-chain
-        process.stdout.write('on-chain... ');
-        const provider = new Web3.providers.HttpProvider(providerAddress);
-        const web3 = new Web3(provider);
-        const organization = await Organization.at(orgAddress);
-        organization.setProvider(web3.currentProvider);
-        try {
-            res.orgid = await organization.address; //TODO review
-            res.owner = await organization.methods.owner().call();
-            res.orgJsonUri = await organization.methods.orgJsonUri().call();
-            log.debug(res.orgJsonUri);
-            res.orgJsonHash = await organization.methods.orgJsonHash().call();
-            const createdBlock = await organization.methods.created().call();
-            const resolvedBlock = await web3.eth.getBlock(createdBlock);
-            res.lastBlockUpdated = parseInt(createdBlock);
-            res.dateCreated = resolvedBlock ? new Date(resolvedBlock.timestamp * 1000) : new Date();
-            const associatedKeys = await organization.methods.getAssociatedKeys().call();
-            associatedKeys.shift(); // remove zeroeth item
-            res.associatedKeys = associatedKeys;//.join(',');
-
-            // off-chain
-            process.stdout.write('off-chain... ');
-            let orgJsonResponse, orgJsonText;
-            try {
-                orgJsonResponse = await fetch(res.orgJsonUri);
-                orgJsonText = await orgJsonResponse.text();
-            } catch (e) {
-                log.debug(e);
-
-            }
-            let orgJsonContent;
-            try {
-                orgJsonContent = JSON.parse(orgJsonText);
-                res.orgJsonContent = orgJsonText;
-            } catch (e) {
-                console.warn(`Invalid json for org.id at ${orgAddress}`);
-            }
-
-            if (orgJsonContent) {
-                if (orgJsonContent.updatedAt) {
-                    res.dateUpdated = new Date(orgJsonContent.updatedAt);
-                }
-
-                if (orgJsonContent.legalEntity) {
-                    res.name = orgJsonContent.legalEntity.name;
-                    if (orgJsonContent.legalEntity.address) {
-                        res.city = orgJsonContent.legalEntity.address.city;
-
-                        const postal = orgJsonContent.legalEntity.address;
-                        const postalAddressString = `${postal.houseNumber || ''} ${postal.road || ''}, ${postal.city || ''}, ${postal.postcode || ''}, ${postal.countryCode || ''}`;
-                        console.log(postalAddressString)
-                        /*const { gpsCoordsLat, gpsCoordsLon } = await findCoordinates(postalAddressString);
-                        res.gpsCoordsLat = gpsCoordsLat;
-                        res.gpsCoordsLon = gpsCoordsLon;*/
-                    }
-                }
-            }
-
-            // deposit
-            process.stdout.write('lif-deposit... ');
-            const deposit = LifDeposit.at(lifDepositAddress);
-            deposit.setProvider(web3.currentProvider);
-            res.lifDepositValue = await deposit.methods.getDepositValue(orgAddress).call();
-
-            res.timestamp = new Date();
-
-            process.stdout.write('res parsed');
-        }
-        catch (e) {
-            log.debug(e);
-        }
-        log.info(JSON.stringify(res, null, 2));
-
-        await cached.upsertOrgid(res);
-
-
-        //await Snapshot.upsert(res);
-
-        log.debug('done.');
-
-        return res;
-    };
-
-    const prepareToScrapeDirectory = async function (orgSegmentsIndex, segmentName, directoryAddress, providerAddress) {
-        const provider = new Web3.providers.HttpProvider(providerAddress);
-        const web3 = new Web3(provider);
-
-        const directory = SegmentDirectory.at(directoryAddress);
-        directory.setProvider(web3.currentProvider);
-
-        const segment = await directory.methods.getSegment().call();
-        console.log(`Preparing segment ${segment}`);
-        const organizations = await directory.methods.getOrganizations().call();
-
-        for (const orgAddress of organizations) {
-            if (orgAddress !== '0x0000000000000000000000000000000000000000') {
-                if (orgSegmentsIndex[orgAddress]) {
-                    orgSegmentsIndex[orgAddress] = `${orgSegmentsIndex[orgAddress]},${segment}`;
-                } else {
-                    orgSegmentsIndex[orgAddress] = segment;
-                }
-            }
-        }
-    };
-
-    const scrapeEnvironment = async (envName, environment) => {
-
-        console.log(`Scraping environment ${envName}`);
-        const provider = new Web3.providers.HttpProvider(environment.provider);
-        const web3 = new Web3(provider);
-
-        const entrypoint = await Entrypoint.at(environment.entrypoint);
-        entrypoint.setProvider(web3.currentProvider);
-
-        const segmentCount = await entrypoint.methods.getSegmentsLength().call();
-        const orgSegmentsIndex = {};
-        for (let i = 1; i < segmentCount; i++) {
-            const segmentName = await entrypoint.methods.getSegmentName(i).call();
-            const segmentAddress = await entrypoint.methods.getSegment(segmentName).call();
-            if (segmentAddress !== '0x0000000000000000000000000000000000000000') {
-                await prepareToScrapeDirectory(orgSegmentsIndex, segmentName, segmentAddress, environment.provider);
-            }
-        }
-        for (const orgAddress in orgSegmentsIndex) {
-            try {
-                await scrapeOrganization(orgAddress, orgSegmentsIndex[orgAddress], envName, environment.provider, environment.lifDeposit);
-            } catch (e) {
-                console.error(e);
-            }
-        }
-    };
-
-    const refreshProvider = (web3Obj, providerUrl) => {
-        let retries = 0;
-
-        function retry(event) {
-            if (event) {
-                log.debug('Web3 provider disconnected or errored.');
-                retries += 1;
-
-                if (retries > 5) { //TODO: check if retry working
-                    log.debug(`Max retries of 5 exceeding: ${retries} times tried`);
-                    return setTimeout(refreshProvider, 5000)
-                }
-            } else {
-                refreshProvider(web3Obj, providerUrl)
-            }
-
-            return null
-        }
-
-        const provider = new Web3.providers.WebsocketProvider(providerUrl);
-
-        provider.on('end', () => {
-                log.debug("Connection ended");
-                retry()
-            }
-        );
-        provider.on('error', () => retry());
-
-        web3Obj.setProvider(provider);
-
-        log.debug('New Web3 provider initiated');
-
-        return provider
-    };
-
-    const setEntrypoint = async (envName, web3obj) => {
-        if (!config().environments[envName]) {
-            throw 'Unknown environment';
-        }
-        const environment = config().environments[envName];
-
-
-        let wssProvider = refreshProvider(web3obj, `wss://ropsten.infura.io/ws/v3/${environment.infuraId}`);
-        const entrypoint = await Entrypoint.at(environment.entrypoint);
-        entrypoint.setProvider(wssProvider);
-        return entrypoint
-    };
-
-    const listenEnvironmentEvents = async (envName) => {
-        const web3 = await new Web3();
-        const environment = config().environments[envName];
-        const entrypoint = await setEntrypoint(envName, web3);
-        let factory = await entrypoint.methods.getOrganizationFactory();
-        let factoryCalled = await factory.call();
-        const abi = OrganizationFactory.schema.abi;
-        let contract = await new web3.eth.Contract(abi, factoryCalled);
-        const currentBlock = await web3.eth.getBlockNumber();
-        log.debug(`currentBlock: ${currentBlock}`);
-        createListenersForAllOrganizations(envName);
-        log.debug('=========================== Listen to all events ==============================');
-        contract.events
-            .allEvents(
-                {
-                    fromBlock: currentBlock
-                },
-                async (/*error, event*/) => {
-                    /*
-                    if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
-                        log.debug("Loaded OrgCreated event")
-                    }*/
-                    //log.debug(event);
-                }
-            )
-            .on('data', async (event) => {
-                log.debug("=================== Data ==========");
-                if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
-                    let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
-                    log.debug(`OrganizationCreated:${createdAddress}`);
-                    const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
-                    listenOrganizationChangeEvents(envName, organization.orgid);
-                } else {
-                    log.debug("Not an OrganizationCreated event")
-                }
-
-                //log.debug(event);
-            })
-            .on('changed', (event) => {
-                log.debug("=================== Changed ===================");
-                log.debug(event);
-            })
-            .on('error', (error) => {
-                log.debug(error);
-            });
-
-
-    };
-    const createListenersForAllOrganizations = async (envName) => {
-        const organizations = await cached.getOrgIds();
-        log.debug(typeof organizations);
-        let allEvents = {};
-        for (let i = 0; i < organizations.length; i++) {
-            log.debug(`==============${organizations[i].orgid}=============`);
-            allEvents[organizations[i].orgid] = await listenOrganizationChangeEvents(envName, organizations[i].orgid);
-        }
-        log.debug(allEvents);
-    };
-
-
-    const listenOrganizationChangeEvents = async (envName, orgId) => {
-        log.debug(`============== Creating listener for ${orgId} ============`);
-        const web3 = await new Web3();
-        const abi = Organization.schema.abi;
-        let contract = await new web3.eth.Contract(abi, orgId);
-        const currentBlock = (await cached.getOrgId(orgId)).lastBlockUpdated;
-        log.debug(`currentBlockForOrg: ${currentBlock}`);
-        try {
-            contract.events
-                .allEvents(
-                    {
-                        fromBlock: 0//currentBlock
-                    },
-                    async (/*error, event*/) => {
-                        /*
-                        if (event.raw.topics[0] === "0x47b688936cae1ca5de00ac709e05309381fb9f18b4c5adb358a5b542ce67caea") {
-                            log.debug("Loaded OrgCreated event")
-                        }*/
-                        //log.debug(event);
-                    }
-                )
-                .on('data', async (event) => {
-                    log.debug("=================== Data ===================");
-                    //const events = config().savedSha3;
-
-                    switch (event.event) {
-                        case "OwnershipTransferred":
-                            const newOwner = event.returnValues.newOwner;
-                            cached.upsertOrgid({orgid: orgId, owner: newOwner});
-                            log.debug('OwnershipTransferred');
-                            break;
-                        case "OrgJsonUriChanged":
-                            const newOrgJsonUri = event.returnValues.newOrgJsonUri;
-                            cached.upsertOrgid({orgid: orgId, orgJsonUri: newOrgJsonUri});
-                            log.debug('OrgJsonUriChanged');
-                            break;
-                        case "OrgJsonHashChanged":
-                            const newOrgJsonHash = event.returnValues.newOrgJsonHash;
-                            cached.upsertOrgid({orgid: orgId, orgJsonHash: newOrgJsonHash});
-                            log.debug('OrgJsonHashChanged');
-                            break;
-                        case "AssociatedKeyAdded":
-                            const associatedKey = event.returnValues.associatedKey;
-                            let orgid = await cached.getOrgIdRaw(orgId);
-                            const keys = orgid.associatedKeys ? [associatedKey, ...orgid.associatedKeys] : [associatedKey];
-                            await orgid.update({associatedKeys: _.uniq(keys)});
-                            log.debug('AssociatedKeyAdded');
-                            break;
-                        case "AssociatedKeyRemoved":
-                            const associatedKeyRemoved = event.returnValues.associatedKey;
-                            log.debug('AssociatedKeyRemoved', associatedKeyRemoved);
-                            break;
-                        /*case "OrganizationCreated":
-                            let createdAddress = `0x${event.raw.topics[1].slice(-40)}`;
-                            log.debug(`OrganizationCreated:${createdAddress}`);
-                            const organization = await scrapeOrganization(createdAddress, 'test_segment', envName, environment.provider, environment.lifDeposit);
-                            break;*/
-                        default :
-                            log.debug(`Not a supported event: ${event.event}`);
-                    }
-                })
-                .on('changed', (event) => {
-                    log.debug("=================== Changed ===================");
-                    log.debug(event);
-                })
-                .on('error', (error) => {
-                    log.debug(error);
-                });
-        } catch (e) {
-            log.debug(e.message);
-        }
-
+            .allEvents({ fromBlock: currentBlockNumber - 10 /* -10 in case of service restart*/ }, async (/*error, event*/) => {})
+            .on('data', resolveOrgidEvent)
+            .on('changed', (event) => log.debug("=================== Changed ===================\r\n", event))
+            .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
     };
 
     return Promise.resolve({
         scrapeOrganizations,
         listenEvents,
 
-        scrapeEnvironment,
-        scrapeOrganization,
-        listenEnvironmentEvents,
-        createListenersForAllOrganizations,
-        setEntrypoint,
-        listenOrganizationChangeEvents,
-        refreshProvider,
         visibleForTests: {
             getEnvironment,
             getOrgidContract,
@@ -543,10 +213,6 @@ module.exports = function (config, cached) {
             getOrganization,
             getSubsidiaries,
             parseOrganization,
-
-
-            scrapeOrganization,
-            prepareToScrapeDirectory
         }
     });
 };
