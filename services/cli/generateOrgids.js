@@ -149,9 +149,9 @@ const generateJSON = (type = "legalEntity") => {
 };
 
 const generatePayload = (owner, allowedTypes) => {
-    const orgidType = _.sample(allowedTypes);
-    const entityType = orgidType === 'legalEntity' ? 'legalEntity' : 'organizationalUnit';
-    const jsonContent = generateJSON(orgidType);
+    const directory = _.sample(allowedTypes);
+    const orgidType = directory === 'legalEntity' ? 'legalEntity' : 'organizationalUnit';
+    const jsonContent = generateJSON(directory);
     const keccak256 = Web3.utils.keccak256(jsonContent.toString());
     const name = (orgidType === 'legalEntity') ? jsonContent.legalEntity.legalName : jsonContent.organizationalUnit.name;
     const { orgid, created: jsonCheckedAt, updated: jsonUpdatedAt } = jsonContent;
@@ -165,6 +165,7 @@ const generatePayload = (owner, allowedTypes) => {
     return {
         owner,
         orgid,
+        directory,
         orgidType,
         keccak256,
         orgJsonUri: `https://my-personal-site.com/${orgid}.json`,
@@ -172,7 +173,7 @@ const generatePayload = (owner, allowedTypes) => {
         jsonCheckedAt,
         jsonUpdatedAt,
         name,
-        country: _.get(jsonContent[entityType], 'locations[0].address.country'),
+        country: _.get(jsonContent[orgidType], 'locations[0].address.country'),
         isWebsiteProved,
         isSslProved,
         isSocialFBProved,
