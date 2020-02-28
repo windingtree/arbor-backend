@@ -45,7 +45,7 @@ module.exports = function (sequelize) {
                 defaultValue: false
             },
             name: {
-                type: Sequelize.STRING(42)
+                type: Sequelize.STRING(1024)
             },
             logo: {
                 type: Sequelize.BLOB
