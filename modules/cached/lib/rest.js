@@ -48,6 +48,7 @@ module.exports = function (rest, cached) {
     router.get('/orgids', async (req, res) => {
         const orgidsQuerySchema = Joi.object({
             'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
+            'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'name': Joi.string(),
             'owner': Joi.string().length(42),
             'country': Joi.string().length(2),

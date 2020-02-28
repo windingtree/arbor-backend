@@ -80,7 +80,7 @@ module.exports = function (config, cached) {
             parentOrganization = parseOrganization(parentEntity);
         }
         // off-chain
-        let jsonContent, orgJsonHashCalculated;
+        let jsonContent, orgJsonHashCalculated, isJsonValid;
         process.stdout.write('off-chain... ');
         try {
             const orgJsonResponse = await fetch(orgJsonUri);
@@ -88,11 +88,14 @@ module.exports = function (config, cached) {
             const orgJsonText = await orgJsonResponse.text();
             orgJsonHashCalculated = Web3.utils.keccak256(orgJsonText);
             jsonContent = JSON.parse(orgJsonText);
+            isJsonValid = orgJsonHashCalculated === orgJsonHash;
         } catch (e) {
             process.stdout.write('[ERROR]\n');
-            log.debug(e);
+            log.debug(e.toString());
         }
 
+        if (!jsonContent) throw 'Cannot get jsonContent';
+        if (!isJsonValid) throw `jsonContent is not valid (hash=${orgJsonHashCalculated})`;
         const orgidType = (typeof jsonContent.legalEntity === 'object') ? 'legalEntity' : (typeof jsonContent.organizationalUnit === 'object' ? 'organizationalUnit' : 'unknown');
         const directory = orgidType === 'legalEntity' ? 'legalEntity' : _.get(jsonContent, 'organizationalUnit.type', 'unknown');
         const name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');
@@ -134,7 +137,7 @@ module.exports = function (config, cached) {
             // isSocialTWProved
             // isSocialIGProved
             // isSocialLNProved
-            isJsonValid: orgJsonHashCalculated === orgJsonHash,
+            isJsonValid,
             orgJsonHash,
             orgJsonUri,
             jsonContent,
@@ -148,14 +151,24 @@ module.exports = function (config, cached) {
         log.info('Scrape organizations:', organizations);
 
         for(let orgid of organizations) {
-            const organization = await parseOrganization(orgid);
-            await cached.upsertOrgid(organization);
+
+            let organization = {};
+            try {
+                organization = await parseOrganization(orgid);
+                await cached.upsertOrgid(organization);
+            } catch (e) {
+                log.warn('Error during parseOrganization / upsertOrgid', e.toString());
+            }
 
             if (organization.subsidiaries) {
                 log.info('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
                 for(let orgid of organization.subsidiaries) {
-                    let subOrganization = await parseOrganization(orgid, organization);
-                    await cached.upsertOrgid(subOrganization);
+                    try {
+                        let subOrganization = await parseOrganization(orgid, organization);
+                        await cached.upsertOrgid(subOrganization);
+                    } catch (e) {
+                        log.warn('Error during [SubOrg] parseOrganization / upsertOrgid', e.toString());
+                    }
                 }
             }
         }

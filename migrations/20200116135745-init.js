@@ -25,7 +25,7 @@ module.exports = {
                             type: Sequelize.STRING(42)
                         },
                         directory: {
-                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown')
+                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'insurance', 'unknown')
                         },
                         director: {
                             type: Sequelize.STRING(42),
@@ -136,7 +136,7 @@ module.exports = {
     down: (queryInterface/*, Sequelize*/) => {
         return Promise.all([
             queryInterface.dropTable('orgids'),
-            queryInterface.dropTable('stats'),
+            queryInterface.dropTable('stats'),    // old one
             queryInterface.dropTable('managers'), // old one
             queryInterface.dropTable('sections')  // old one
         ]);

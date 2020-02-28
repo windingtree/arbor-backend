@@ -30,7 +30,7 @@ module.exports = function (sequelize) {
                 type: Sequelize.STRING(42)
             },
             directory: {
-                type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'unknown')
+                type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'insurance', 'unknown')
             },
             director: {
                 type: Sequelize.STRING(42),
