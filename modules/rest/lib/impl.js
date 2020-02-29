@@ -41,7 +41,9 @@ module.exports = function (cfg) {
     app.options('*', cors());
     app.use(cors());
     app.use((req, res, next) => {
-        res.header('Content-Type', 'application/vnd.api+json');
+        if(req.url.indexOf('mediaType') === -1){
+            res.header('Content-Type', 'application/vnd.api+json');
+        }
         res.header('Access-Control-Allow-Origin', '*');
         res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
         res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');

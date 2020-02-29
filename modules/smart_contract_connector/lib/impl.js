@@ -80,7 +80,7 @@ module.exports = function (config, cached) {
             parentOrganization = parseOrganization(parentEntity);
         }
         // off-chain
-        let jsonContent, orgJsonHashCalculated, isJsonValid;
+        let jsonContent, orgJsonHashCalculated, isJsonValid, autoCache;
         process.stdout.write('off-chain... ');
         try {
             const orgJsonResponse = await fetch(orgJsonUri);
@@ -88,14 +88,15 @@ module.exports = function (config, cached) {
             const orgJsonText = await orgJsonResponse.text();
             orgJsonHashCalculated = Web3.utils.keccak256(orgJsonText);
             jsonContent = JSON.parse(orgJsonText);
-            isJsonValid = orgJsonHashCalculated === orgJsonHash;
+            autoCache = Web3.utils.keccak256(JSON.stringify(jsonContent, null, 2));
+            isJsonValid = (orgJsonHashCalculated === orgJsonHash) || (autoCache === orgJsonHash);
         } catch (e) {
             process.stdout.write('[ERROR]\n');
             log.debug(e.toString());
         }
 
         if (!jsonContent) throw 'Cannot get jsonContent';
-        if (!isJsonValid) throw `jsonContent is not valid (hash=${orgJsonHashCalculated})`;
+        if (!isJsonValid) throw `(got hash=${chalk.red(orgJsonHashCalculated === autoCache ? autoCache : `${orgJsonHashCalculated} ~ ${autoCache}`)} BUT expected ${chalk.green(orgJsonHash)})`;
         const orgidType = (typeof jsonContent.legalEntity === 'object') ? 'legalEntity' : (typeof jsonContent.organizationalUnit === 'object' ? 'organizationalUnit' : 'unknown');
         const directory = orgidType === 'legalEntity' ? 'legalEntity' : _.get(jsonContent, 'organizationalUnit.type', 'unknown');
         const name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');

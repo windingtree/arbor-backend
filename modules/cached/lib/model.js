@@ -48,7 +48,7 @@ module.exports = function (sequelize) {
                 type: Sequelize.STRING(1024)
             },
             logo: {
-                type: Sequelize.BLOB
+                type: Sequelize.STRING(1024)
             },
             country: {
                 type: Sequelize.STRING(42)
