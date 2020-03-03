@@ -1,6 +1,7 @@
 const _ = require('lodash');
 const chalk = require('chalk');
 const fetch = require('node-fetch');
+const dns = require('dns');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -16,6 +17,75 @@ module.exports = function (config, cached) {
     let orgidContract = false;
     let lifDepositContract = false;
     const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+    const getOrgidFromDns = async (link) => {
+        return new Promise((resolve, reject) => {
+            try {
+                if(link.indexOf('://') === -1) link = `https://${link}`;
+                const myURL = new URL(link);
+                dns.resolveTxt(myURL.hostname, (err, data) => {
+                    if (err) return resolve(undefined);
+                    let orgid = _.get(_.filter(data, (record) => record && record.length && record[0].indexOf('orgid=') === 0), '[0][0]', false);
+                    if (orgid) orgid = orgid.replace('orgid=', '').replace('did:orgid:');
+                    return resolve(orgid);
+                })
+            } catch (e) {
+                resolve(false)
+            }
+
+        })
+    };
+
+    const getOrgidFromUrl = async (link) => {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const fetched = await fetch(`${link}/org.id`);
+                let body = await fetched.text();
+                body = body.replace('orgid=', '').replace('did:orgid:');
+                resolve(body);
+            } catch (e) {
+                resolve(false);
+            }
+        })
+    };
+
+    const getOrgidFromLink = async (link) => {
+        let orgid = await getOrgidFromDns(link);
+        if (!orgid) orgid = await getOrgidFromUrl(link);
+        return orgid;
+    };
+
+    const checkSslByUrl = (link, expectedLegalName) => {
+        return new Promise(async (resolve, reject) => {
+            if(link.indexOf('://') === -1) link = `https://${link}`;
+            const dns = await getOrgidFromDns(link);
+            if (dns === undefined) return resolve(dns);
+            let requestSsl;
+            try {
+                let { hostname } = new URL(link);
+                let isAuthorized = false;
+                const options = { host: hostname, method: 'get', path: '/', agent: new https.Agent({ maxCachedSessions: 0 }) };
+                let companySiteHostnameFromServer, legalNameFromServer;
+                requestSsl = https.request(options, (response) => {
+                    let subject = response.socket.getPeerCertificate().subject;
+                    let CN = subject.CN.replace('*.','');
+                    if(CN.indexOf('://') === -1) CN = `https://${CN}`;
+                    companySiteHostnameFromServer = new URL(CN).hostname;
+                    legalNameFromServer = subject.O;
+                    console.log(companySiteHostnameFromServer, legalNameFromServer);
+
+                    isAuthorized = response.socket.authorized;
+                    resolve(isAuthorized && (legalNameFromServer === expectedLegalName) && (companySiteHostnameFromServer === hostname))
+                });
+                requestSsl.end();
+            } catch (e) {
+                console.log('[ERROR]', e.toString());
+                resolve(false)
+            }
+        })
+
+    };
+
 
     const getEnvironment = () => {
         const { currentEnvironment, environments } = config();
@@ -103,7 +173,12 @@ module.exports = function (config, cached) {
         const logo = _.get(jsonContent,  'media.logo', undefined);
         const parent = (parentEntity !== orgid0x) ? { orgid: parentEntity, name: parentOrganization.name, proofsQty: parentOrganization.proofsQty || 0 } : undefined;
         const country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address.country', '');
-
+        const contacts = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
+        const website = contacts.website;
+        const isWebsiteProved = (orgid === (await getOrgidFromLink(website)));
+        // console.log('website', website, 'orgid', orgid , 'from site', (await getOrgidFromLink(website)));
+        let isSslProved = false;
+        if (isWebsiteProved) isSslProved = checkSslByUrl(website);
         /*
         process.stdout.write('lif-deposit... ');
         let lifDepositValue;
@@ -117,6 +192,11 @@ module.exports = function (config, cached) {
             log.debug(e.toString());
         }
         */
+        let isLifProved = false,
+            isSocialFBProved = false,
+            isSocialTWProved = false,
+            isSocialIGProved = false,
+            isSocialLNProved = false;
         return {
             orgid,
             owner,
@@ -130,10 +210,10 @@ module.exports = function (config, cached) {
             name,
             logo,
             country,
-            // proofsQty
+            proofsQty: _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialFBProved, isSocialTWProved, isSocialIGProved, isSocialLNProved]).length,
             isLifProved: false /*!!lifDepositValue*/,
-            // isWebsiteProved
-            // isSslProved
+            isWebsiteProved,
+            isSslProved,
             // isSocialFBProved
             // isSocialTWProved
             // isSocialIGProved
