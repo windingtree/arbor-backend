@@ -629,10 +629,10 @@
     truffle-hdwallet-provider "0.0.3"
     zeppelin-solidity "^1.6.0"
 
-"@windingtree/org.id@^0.11.1":
-  version "0.11.1"
-  resolved "https://registry.yarnpkg.com/@windingtree/org.id/-/org.id-0.11.1.tgz#9cf6591dcc2550a6fe867673c28bc21706fb51d4"
-  integrity sha512-7WrYdn5eMbRbRg6bp8udT/hW+X+neujpinKgGzi3JhGG8P3iYFZ/+Dz2+X1tlOTfmNNFG8dRRNeOR3pjzFU+gg==
+"@windingtree/org.id@^0.11.5":
+  version "0.11.5"
+  resolved "https://registry.yarnpkg.com/@windingtree/org.id/-/org.id-0.11.5.tgz#43b733a3456b7695b08a6aed3101dca45f7dadf0"
+  integrity sha512-mB6FrJaV6qvZFL2AMogQivsf5lovu5DvSQZ4V5ynm+qYsZsobgf6ez/XOoyTLCXFxGIdO7s9spV8SvLDIqyoXw==
   dependencies:
     "@openzeppelin/contracts" "2.5.0"
 

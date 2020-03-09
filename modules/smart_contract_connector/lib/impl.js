@@ -11,11 +11,13 @@ const lib = require('zos-lib');
 const Contracts = lib.Contracts;
 const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
 const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
+const LifToken = Contracts.getFromNodeModules('@windingtree/lif-token', 'LifToken');
 
 module.exports = function (config, cached) {
 
     let orgidContract = false;
     let lifDepositContract = false;
+    let lifTokenContract = false;
     const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
     const getOrgidFromDns = async (link) => {
@@ -79,7 +81,7 @@ module.exports = function (config, cached) {
                 });
                 requestSsl.end();
             } catch (e) {
-                console.log('[ERROR]', e.toString());
+                console.log('checkSslByUrl [ERROR]', e.toString());
                 resolve(false)
             }
         })
@@ -121,6 +123,14 @@ module.exports = function (config, cached) {
         return lifDepositContract;
     };
 
+    const getLifTokenContract = async () => {
+        if (lifTokenContract) return lifTokenContract;
+        const environment = getEnvironment();
+        lifTokenContract = LifToken.at(environment.lifTokenAddress);
+        lifTokenContract.setProvider(environment.web3.currentProvider);
+        return lifTokenContract;
+    };
+
     const getOrganizationsList = async () => {
         const orgidContract = await getOrgidContract();
         return orgidContract.methods.getOrganizations().call();
@@ -145,6 +155,7 @@ module.exports = function (config, cached) {
     const parseOrganization = async (orgid, parentOrganization = false) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
         const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed } = await getOrganization(orgid);
+        console.log('const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);');
         const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);
         if (parentEntity !== orgid0x && parentOrganization === false) {
             parentOrganization = parseOrganization(parentEntity);
@@ -166,7 +177,7 @@ module.exports = function (config, cached) {
         }
 
         if (!jsonContent) throw 'Cannot get jsonContent';
-        if (!isJsonValid) throw `(got hash=${chalk.red(orgJsonHashCalculated === autoCache ? autoCache : `${orgJsonHashCalculated} ~ ${autoCache}`)} BUT expected ${chalk.green(orgJsonHash)})`;
+        if (!isJsonValid) throw `(got hash=${chalk.red(orgJsonHashCalculated === autoCache ? autoCache : `${orgJsonHashCalculated} ~ ${autoCache}`)} BUT expected ${chalk.green(orgJsonHash)}) for uri ${orgJsonUri}`;
         const orgidType = (typeof jsonContent.legalEntity === 'object') ? 'legalEntity' : (typeof jsonContent.organizationalUnit === 'object' ? 'organizationalUnit' : 'unknown');
         const directory = orgidType === 'legalEntity' ? 'legalEntity' : _.get(jsonContent, 'organizationalUnit.type', 'unknown');
         const name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');
@@ -257,42 +268,51 @@ module.exports = function (config, cached) {
 
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
-        log.debug(event.event ? event.event : event.raw, event.returnValues);
-        let organization, subOrganization;
-        switch (event.event) {
-            case "OrganizationCreated":
-            case "OrganizationOwnershipTransferred":
-            case "OrgJsonUriChanged":
-            case "OrgJsonHashChanged":
-                organization = await parseOrganization(event.returnValues.orgId);
-                await cached.upsertOrgid(organization);
-                break;
-            case "SubsidiaryCreated":
-                organization = await parseOrganization(event.returnValues.parentOrgId);
-                await cached.upsertOrgid(organization);
-                subOrganization = await parseOrganization(event.returnValues.subOrgId, organization);
-                await cached.upsertOrgid(subOrganization);
-                break;
-            case "LifDepositAdded":
-            case "WithdrawalRequested":
-            case "DepositWithdrawn":
-                break;
-            case "WithdrawDelayChanged":
-                break;
-            default :
-                log.debug(`this event do not have any reaction behavior`);
+        try {
+            log.debug(event.event ? event.event : event.raw, event.returnValues);
+            let organization, subOrganization;
+            switch (event.event) {
+                case "OrganizationCreated":
+                case "OrganizationOwnershipTransferred":
+                case "OrgJsonUriChanged":
+                case "OrgJsonHashChanged":
+                    organization = await parseOrganization(event.returnValues.orgId);
+                    await cached.upsertOrgid(organization);
+                    break;
+                case "SubsidiaryCreated":
+                    organization = await parseOrganization(event.returnValues.parentOrgId);
+                    await cached.upsertOrgid(organization);
+                    subOrganization = await parseOrganization(event.returnValues.subOrgId, organization);
+                    await cached.upsertOrgid(subOrganization);
+                    break;
+                case "LifDepositAdded":
+                case "WithdrawalRequested":
+                case "DepositWithdrawn":
+                    break;
+                case "WithdrawDelayChanged":
+                    break;
+                default :
+                    log.debug(`this event do not have any reaction behavior`);
+            }
+        } catch (e) {
+            log.error('Error during resolve event', e.toString())
         }
+
     };
 
     const listenEvents = async () => {
-        const orgidContract = await getOrgidContract();
-        const currentBlockNumber = await getCurrentBlockNumber();
-        log.debug(`event listening started...${chalk.grey(`(from block ${currentBlockNumber})`)}`);
-        orgidContract.events
-            .allEvents({ fromBlock: currentBlockNumber - 10 /* -10 in case of service restart*/ }, async (/*error, event*/) => {})
-            .on('data', resolveOrgidEvent)
-            .on('changed', (event) => log.debug("=================== Changed ===================\r\n", event))
-            .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
+        try {
+            const orgidContract = await getOrgidContract();
+            const currentBlockNumber = await getCurrentBlockNumber();
+            log.debug(`event listening started...${chalk.grey(`(from block ${currentBlockNumber})`)}`);
+            orgidContract.events
+                .allEvents({ fromBlock: currentBlockNumber - 10 /* -10 in case of service restart*/ }, async (/*error, event*/) => {})
+                .on('data', resolveOrgidEvent)
+                .on('changed', (event) => log.debug("=================== Changed ===================\r\n", event))
+                .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
+        } catch (e) {
+            log.error('Error during listenEvents', e.toString());
+        }
     };
 
     return Promise.resolve({
@@ -303,6 +323,7 @@ module.exports = function (config, cached) {
             getEnvironment,
             getOrgidContract,
             getLifDepositContract,
+            getLifTokenContract,
             getOrganizationsList,
             getOrganization,
             getSubsidiaries,
