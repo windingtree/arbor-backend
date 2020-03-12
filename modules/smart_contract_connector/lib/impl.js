@@ -86,9 +86,7 @@ module.exports = function (config, cached) {
                 resolve(false)
             }
         })
-
     };
-
 
     const getEnvironment = () => {
         const { currentEnvironment, environments } = config();
@@ -145,7 +143,6 @@ module.exports = function (config, cached) {
             log.error(`Error during getting getOrganization ${orgid} from smartcontract`);
             throw e;
         }
-
     };
 
     const getSubsidiaries = async (orgid) => {
@@ -166,6 +163,24 @@ module.exports = function (config, cached) {
                     $code = cheerio.load(insideCode);
                     post = $code('[data-testid="post_message"] > div > p').html();
                 } while (!!$code && !post && i<20);
+                if(!post) return resolve(false);
+                const [orgid] = post.match(/0x[0-9ABCDEFabcdef]{64}/) || [false];
+                resolve(orgid)
+            } catch (e) {
+                log.warn('Error during getOrgIdFromFacebookPost:', e.toString());
+                resolve(false)
+            }
+        })
+    };
+
+    const getOrgIdFromTwitterPost = (socialUrl) => {
+        return new Promise(async (resolve) => {
+            try {
+                const orgJsonResponse = await fetch(socialUrl);
+                process.stdout.write('[WT::READ-OK]\n');
+                const orgJsonText = await orgJsonResponse.text();
+                const $ = cheerio.load(orgJsonText);
+                const post = $(`.js-tweet-text`).text();
                 if(!post) return resolve(false);
                 const [orgid] = post.match(/0x[0-9ABCDEFabcdef]{64}/) || [false];
                 resolve(orgid)
@@ -217,24 +232,14 @@ module.exports = function (config, cached) {
         if (trustFacebookUri) {
             isSocialFBProved =  (await getOrgIdFromFacebookPost(trustFacebookUri)) === orgid;
         }
-        const website = contacts.website;
+        const trustTwitterUri = _.get(_.filter(_.get(jsonContent, `trust`, []), (clue) => ['social', 'twitter'].indexOf(clue.type) !== -1 && clue.proof.indexOf('twitter') !== -1), '[0].proof', false);
+        if (trustTwitterUri) {
+            isSocialTWProved =  (await getOrgIdFromTwitterPost(trustFacebookUri)) === orgid;
+        }
+        const {website} = contacts;
         const isWebsiteProved = (orgid === (await getOrgidFromLink(website)));
-        // console.log('website', website, 'orgid', orgid , 'from site', (await getOrgidFromLink(website)));
         let isSslProved = false;
         if (isWebsiteProved) isSslProved = checkSslByUrl(website);
-        /*
-        process.stdout.write('lif-deposit... ');
-        let lifDepositValue;
-        try {
-            const lifDepositContract = await getLifDepositContract();
-            lifDepositValue = await lifDepositContract.methods.getDepositValue(orgid).call();
-            process.stdout.write('[READ-OK]\n');
-            log.debug('lifDepositValue', lifDepositValue);
-        } catch (e) {
-            process.stdout.write('[ERROR]\n');
-            log.debug(e.toString());
-        }
-        */
         let isLifProved =  orgIdLifDepositAmount >= lifMinimumDeposit;
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
         return {
@@ -257,7 +262,6 @@ module.exports = function (config, cached) {
             isSocialFBProved,
             isSocialTWProved,
             isSocialIGProved,
-            isSocialLNProved,
             isJsonValid,
             orgJsonHash,
             orgJsonUri,
