@@ -2,6 +2,7 @@ const _ = require('lodash');
 const chalk = require('chalk');
 const fetch = require('node-fetch');
 const dns = require('dns');
+const cheerio = require('cheerio');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -152,11 +153,35 @@ module.exports = function (config, cached) {
         return orgidContract.methods.getSubsidiaries(orgid).call();
     };
 
+    const getOrgIdFromFacebookPost = (socialUrl) => {
+        return new Promise(async (resolve) => {
+            try {
+                const orgJsonResponse = await fetch(socialUrl);
+                process.stdout.write('[FB::READ-OK]\n');
+                const orgJsonText = await orgJsonResponse.text();
+                let $ = cheerio.load(orgJsonText);
+                let insideCode = '', $code, post = '', i = 0;
+                do {
+                    insideCode = $(`.hidden_elem > code`).eq(i++).html().replace('<!--', '').replace('-->', '').replace('\"', '"');
+                    $code = cheerio.load(insideCode);
+                    post = $code('[data-testid="post_message"] > div > p').html();
+                } while (!!$code && !post && i<20);
+                if(!post) return resolve(false);
+                const [orgid] = post.match(/0x[0-9ABCDEFabcdef]{64}/) || [false];
+                resolve(orgid)
+            } catch (e) {
+                log.warn('Error during getOrgIdFromFacebookPost:', e.toString());
+                resolve(false)
+            }
+        })
+    };
+
     const parseOrganization = async (orgid, parentOrganization = false) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
         const { currentEnvironment, environments } = config();
         const { lifDecimals, lifMinimumDeposit } = environments[currentEnvironment];
         const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed, deposit } = await getOrganization(orgid);
+        let isSocialFBProved = false, isSocialTWProved = false, isSocialIGProved = false, isSocialLNProved = false;
         const orgIdLifDepositAmount = parseFloat(`${deposit.substr(0, deposit.length - lifDecimals)}.${deposit.substr(deposit.length - lifDecimals)}`);
         console.log('const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);');
         const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);
@@ -188,6 +213,10 @@ module.exports = function (config, cached) {
         const parent = (parentEntity !== orgid0x) ? { orgid: parentEntity, name: parentOrganization.name, proofsQty: parentOrganization.proofsQty || 0 } : undefined;
         const country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address.country', '');
         const contacts = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
+        const trustFacebookUri = _.get(_.filter(_.get(jsonContent, `trust`, []), (clue) => ['social', 'facebook'].indexOf(clue.type) !== -1 && clue.proof.indexOf('facebook') !== -1), '[0].proof', false);
+        if (trustFacebookUri) {
+            isSocialFBProved =  (await getOrgIdFromFacebookPost(trustFacebookUri)) === orgid;
+        }
         const website = contacts.website;
         const isWebsiteProved = (orgid === (await getOrgidFromLink(website)));
         // console.log('website', website, 'orgid', orgid , 'from site', (await getOrgidFromLink(website)));
@@ -206,11 +235,7 @@ module.exports = function (config, cached) {
             log.debug(e.toString());
         }
         */
-        let isLifProved =  orgIdLifDepositAmount >= lifMinimumDeposit,
-            isSocialFBProved = false,
-            isSocialTWProved = false,
-            isSocialIGProved = false,
-            isSocialLNProved = false;
+        let isLifProved =  orgIdLifDepositAmount >= lifMinimumDeposit;
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
         return {
             orgid,
@@ -229,10 +254,10 @@ module.exports = function (config, cached) {
             isLifProved,
             isWebsiteProved,
             isSslProved,
-            // isSocialFBProved
-            // isSocialTWProved
-            // isSocialIGProved
-            // isSocialLNProved
+            isSocialFBProved,
+            isSocialTWProved,
+            isSocialIGProved,
+            isSocialLNProved,
             isJsonValid,
             orgJsonHash,
             orgJsonUri,
