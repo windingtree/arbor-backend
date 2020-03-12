@@ -309,6 +309,9 @@ module.exports = function (config, cached) {
                 case "OrganizationOwnershipTransferred":
                 case "OrgJsonUriChanged":
                 case "OrgJsonHashChanged":
+                case "LifDepositAdded":     // event LifDepositAdded    (bytes32 indexed orgId, address indexed sender, uint256 value);
+                case "WithdrawalRequested": // event WithdrawalRequested(bytes32 indexed orgId, address indexed sender, uint256 value, uint256 withdrawTime);
+                case "DepositWithdrawn":    // event DepositWithdrawn   (bytes32 indexed orgId, address indexed sender, uint256 value);
                     organization = await parseOrganization(event.returnValues.orgId);
                     await cached.upsertOrgid(organization);
                     break;
@@ -317,10 +320,6 @@ module.exports = function (config, cached) {
                     await cached.upsertOrgid(organization);
                     subOrganization = await parseOrganization(event.returnValues.subOrgId, organization);
                     await cached.upsertOrgid(subOrganization);
-                    break;
-                case "LifDepositAdded":
-                case "WithdrawalRequested":
-                case "DepositWithdrawn":
                     break;
                 case "WithdrawDelayChanged":
                     break;
