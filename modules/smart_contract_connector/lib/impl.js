@@ -21,7 +21,7 @@ module.exports = function (config, cached) {
     const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
     const getOrgidFromDns = async (link) => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             try {
                 if(link.indexOf('://') === -1) link = `https://${link}`;
                 const myURL = new URL(link);
@@ -39,7 +39,7 @@ module.exports = function (config, cached) {
     };
 
     const getOrgidFromUrl = async (link) => {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve) => {
             try {
                 const fetched = await fetch(`${link}/org.id`);
                 let body = await fetched.text();
@@ -58,7 +58,7 @@ module.exports = function (config, cached) {
     };
 
     const checkSslByUrl = (link, expectedLegalName) => {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve) => {
             if(link.indexOf('://') === -1) link = `https://${link}`;
             const dns = await getOrgidFromDns(link);
             if (dns === undefined) return resolve(dns);
@@ -154,7 +154,10 @@ module.exports = function (config, cached) {
 
     const parseOrganization = async (orgid, parentOrganization = false) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
-        const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed } = await getOrganization(orgid);
+        const { currentEnvironment, environments } = config();
+        const { lifDecimals, lifMinimumDeposit } = environments[currentEnvironment];
+        const { /*orgId,*/ orgJsonUri, orgJsonHash, parentEntity, owner, director, state, directorConfirmed, deposit } = await getOrganization(orgid);
+        const orgIdLifDepositAmount = parseFloat(`${deposit.substr(0, deposit.length - lifDecimals)}.${deposit.substr(deposit.length - lifDecimals)}`);
         console.log('const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);');
         const subsidiaries = (parentEntity !== orgid0x) ? [] : await getSubsidiaries(orgid);
         if (parentEntity !== orgid0x && parentOrganization === false) {
@@ -203,11 +206,12 @@ module.exports = function (config, cached) {
             log.debug(e.toString());
         }
         */
-        let isLifProved = false,
+        let isLifProved =  orgIdLifDepositAmount >= lifMinimumDeposit,
             isSocialFBProved = false,
             isSocialTWProved = false,
             isSocialIGProved = false,
             isSocialLNProved = false;
+        const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
         return {
             orgid,
             owner,
@@ -221,8 +225,8 @@ module.exports = function (config, cached) {
             name,
             logo,
             country,
-            proofsQty: _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialFBProved, isSocialTWProved, isSocialIGProved, isSocialLNProved]).length,
-            isLifProved: false /*!!lifDepositValue*/,
+            proofsQty: _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialProved]).length,
+            isLifProved,
             isWebsiteProved,
             isSslProved,
             // isSocialFBProved
