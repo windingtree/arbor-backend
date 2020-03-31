@@ -90,7 +90,7 @@ module.exports = function (config, cached) {
 
     const getEnvironment = () => {
         const { currentEnvironment, environments } = config();
-        const provider = new Web3.providers.WebsocketProvider(`wss://ropsten.infura.io/ws/v3/${environments[currentEnvironment].infuraId}`);
+        const provider = new Web3.providers.WebsocketProvider(`wss://${environments[currentEnvironment].network}.infura.io/ws/v3/${environments[currentEnvironment].infuraId}`);
         const web3 = new Web3(provider);
 
         return Object.assign({}, environments[currentEnvironment], { provider, web3 });
