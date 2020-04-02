@@ -1,0 +1,51 @@
+---
+kind: Project
+name: arbor
+environments:
+- name: local
+  providers:
+  - name: kubernetes
+    kubeconfig: ../../../.kube/config
+    context: docker-desktop
+    defaultHostname: kubernetes.docker.internal
+    # buildMode: local-docker
+    # deploymentRegistry:
+    #   hostname: registry.hub.docker.com
+    #   namespace: arbor
+    buildMode: cluster-docker
+    # imagePullSecrets:
+    # - name: gitlab-registry
+    #   namespace: default
+defaultEnvironment: local
+# modules:
+#   include:
+#     - "garden-modules.yml"
+#     - frontend/*
+#     - backend/*
+# variables:
+---
+kind: Module
+description: docker image for arbor-backend
+type: container
+name: backend
+image: arbor-backend
+dockerfile: Dockerfile
+build:
+  # dependencies:
+  #   - name: docker-registry
+services:
+  - name: backend
+    ports:
+      - name: server
+        protocol: TCP
+        containerPort: 3000
+        servicePort: 3000
+    ingresses:
+      - annotations: {}
+        # The hostname that should route to this service. Defaults to the default hostname
+        # configured in the provider configuration.
+        #
+        # Note that if you're developing locally you may need to add this hostname to your hosts file.
+        hostname: beckend.arbor.docker.internal
+        path: /
+        port: server
