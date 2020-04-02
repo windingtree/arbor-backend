@@ -3,7 +3,6 @@ const chalk = require('chalk');
 const fetch = require('node-fetch');
 const dns = require('dns');
 const cheerio = require('cheerio');
-const sleep = require('sleep');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -184,6 +183,36 @@ module.exports = function (config, cached) {
         }
     };
 
+
+    // Get an organization with retry attempts
+    const getOrganizationWithRetry = (orgid, attempts = 5) => {
+        return new Promise((resolve, reject) => {
+            // Check if we reached maximum attempts
+            if(attempts == 0) {
+                reject("Organization not retrieved after max attemps");
+            }
+
+            // Retrieve organization
+            getOrganization(orgid)
+            .then(organization => {
+
+                // Check if organization exists
+                if(organization.exist) {
+                    resolve(organization);
+                }
+
+                // Otherwise, attempt again later
+                setTimeout(() => {
+                    getOrganizationWithRetry(orgid, attempts - 1)
+                    .then(organization => resolve(organization))
+                    .catch(error => reject(error));
+                }, 2*1000);
+
+            })
+            .catch(error => reject(error));
+        });
+    };
+
     // Get the subsidaries of an orgid
     const getSubsidiaries = async (orgid) => {
         let orgidContract = await getOrgidContract();
@@ -277,18 +306,15 @@ module.exports = function (config, cached) {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
 
         // Get the Organization data from the smart contract
-        let organization = await getOrganization(orgid);
-        
-        // For race condition between event and EVM update
-        let attempts = 5;
-        while(!organization.exist || attempts>0) {
-            attempts -= 1;
-            log.info(`Organization does not exist yet. Waiting for 2s. | ${attempts}`);
-            await sleep.sleep(2000);
-            organization = await getOrganization(orgid);
+        let organization;
+        try {
+            organization = await getOrganizationWithRetry(orgid);
         }
-
-
+        catch(e) {
+            log.error(e.toString());
+            return {};
+        }
+        
         log.debug(`Organization Details: ${JSON.stringify(organization)}`);
         let owner = organization.owner;
         let director = organization.director;
