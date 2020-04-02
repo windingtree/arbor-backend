@@ -281,8 +281,9 @@ module.exports = function (config, cached) {
         
         // For race condition between event and EVM update
         let attempts = 5;
-        while(!organization.exist && attempts>0) {
+        while(!organization.exist || attempts>0) {
             attempts -= 1;
+            log.info(`Organization does not exist yet. Waiting for 2s. | ${attempts}`);
             await sleep.sleep(2000);
             organization = await getOrganization(orgid);
         }
