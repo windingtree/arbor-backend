@@ -3,6 +3,7 @@ const chalk = require('chalk');
 const fetch = require('node-fetch');
 const dns = require('dns');
 const cheerio = require('cheerio');
+const sleep = require('sleep');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
 
@@ -277,6 +278,16 @@ module.exports = function (config, cached) {
 
         // Get the Organization data from the smart contract
         let organization = await getOrganization(orgid);
+        
+        // For race condition between event and EVM update
+        let attempts = 5;
+        while(!organization.exist && attempts>0) {
+            attempts -= 1;
+            await sleep(2000);
+            organization = await getOrganization(orgid);
+        }
+
+
         log.debug(`Organization Details: ${JSON.stringify(organization)}`);
         let owner = organization.owner;
         let director = organization.director;
