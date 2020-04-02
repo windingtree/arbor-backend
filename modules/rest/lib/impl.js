@@ -5,7 +5,7 @@ const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').
 log.level = 'trace';
 const express = require('express');
 var app = require('express')();
-//const cors = require('cors');
+const cors = require('cors');
 const fs = require('fs');
 const logger = require('./logger');
 const http = require('http');
@@ -49,15 +49,15 @@ module.exports = function (cfg) {
 
     // app.logger = appLogger;
     
-    //app.options('*', cors());
-    //app.use(cors());
+    app.options('*', cors());
+    app.use(cors());
     app.use((req, res, next) => {
         if(req.url.indexOf('mediaType') === -1){
             res.header('Content-Type', 'application/vnd.api+json');
         }
-        //res.header('Access-Control-Allow-Origin', '*');
-        //res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        //res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+        res.header('Access-Control-Allow-Origin', '*.arbor.fm');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+        res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
         next();
     });
 
