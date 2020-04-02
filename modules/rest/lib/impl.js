@@ -4,11 +4,11 @@ const qs = require('qs');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'trace';
 const express = require('express');
-const app = require('express')();
-const cors = require('cors');
+var app = require('express')();
+//const cors = require('cors');
 const fs = require('fs');
 const logger = require('./logger');
-const https = require('https');
+const http = require('http');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
@@ -23,30 +23,41 @@ module.exports = function (cfg) {
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
 
-    config.app.sslOptions = {
-        key: fs.readFileSync(`config/cert/${config.app.host}/privkey.pem`),
-        cert: fs.readFileSync(`config/cert/${config.app.host}/fullchain.pem`)
-    };
+    //config.app.sslOptions = {
+    //    key: fs.readFileSync(`config/cert/${config.app.host}/privkey.pem`),
+    //    cert: fs.readFileSync(`config/cert/${config.app.host}/fullchain.pem`)
+    //};
 
     // eslint-disable-line no-unused-vars
-    https.createServer(config.app.sslOptions, app).listen(config.app.port, /* config.app.host, */ (err) => {
+    /*
+    https.createServer(config.app.sslOptions, app).listen(config.app.port, // config.app.host, // (err) => {
         if (err) {
             return logger.error(err.message);
         }
-        log.info('HTTPS Server started on', config.app.host, 'and listen to', config.app.port, 'port.');
+        log.info('HTTP Server started on', config.app.host, 'and listen to', config.app.port, 'port.');
+        logger.appStarted(config.app.port, config.app.host);
+    });
+    */
+
+    var server = app.listen(config.app.port, function () {
+        var host = server.address().address;
+        var port = server.address().port;
+        
+        log.info("Server listening at http://%s:%s", host, port);
         logger.appStarted(config.app.port, config.app.host);
     });
 
     // app.logger = appLogger;
-    app.options('*', cors());
-    app.use(cors());
+    
+    //app.options('*', cors());
+    //app.use(cors());
     app.use((req, res, next) => {
         if(req.url.indexOf('mediaType') === -1){
             res.header('Content-Type', 'application/vnd.api+json');
         }
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+        //res.header('Access-Control-Allow-Origin', '*');
+        //res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+        //res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
         next();
     });
 

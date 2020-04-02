@@ -18,8 +18,11 @@ const upload = multer({ dest: 'uploads/tmp/', fileFilter: fileFilter });
 
 
 module.exports = function (rest, orgids_json) {
-    //const baseUrl = (req) =>  url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
-    baseUrl = 'https://staging-api.arbor.fm';
+    const baseUrl = (req => {
+        //url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
+        return 'https://staging-api.arbor.fm/';
+    });
+    
 
     router.post('/json', async (req, res) => {
         const { address, orgidJson } = req.body;
