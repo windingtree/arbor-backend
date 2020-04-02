@@ -283,7 +283,7 @@ module.exports = function (config, cached) {
         let attempts = 5;
         while(!organization.exist && attempts>0) {
             attempts -= 1;
-            await sleep(2000);
+            await sleep.sleep(2000);
             organization = await getOrganization(orgid);
         }
 
