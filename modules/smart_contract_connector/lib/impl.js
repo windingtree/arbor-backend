@@ -324,20 +324,52 @@ module.exports = function (config, cached) {
         }
 
         // Retrieve the offchain data
-        let jsonContent= parseOrganizationJson(organization.orgJsonUri, organization.orgJsonHash);
+        let jsonContent= await parseOrganizationJson(organization.orgJsonUri, organization.orgJsonHash);
         if(!jsonContent) {
             log.error('Error Resolving JSON content', e.toString());
             throw("Organization resolution aborted due to error retrieving JSON content"); 
         }
 
-        // Get relevant details from offchain data
-        let orgidType = (typeof jsonContent.legalEntity === 'object') ? 'legalEntity' : (typeof jsonContent.organizationalUnit === 'object' ? 'organizationalUnit' : 'unknown');
-        let directory = orgidType === 'legalEntity' ? 'legalEntity' : _.get(jsonContent, 'organizationalUnit.type', 'unknown');
-        let name = _.get(jsonContent,  orgidType === 'legalEntity' ? 'legalEntity.legalName' : 'organizationalUnit.name', 'Name is not defined');
-        let logo = _.get(jsonContent,  'media.logo', undefined);
-        let country = _.get(jsonContent, orgidType === 'legalEntity' ? 'legalEntity.registeredAddress.country' : 'organizationalUnit.address.country', '');
-        let contacts = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
+        // Retrieve OrgID Type
+        let orgidType = 'unknown';
+        if(jsonContent.legalEntity) {
+            orgidType = 'legalEntity';
+        } else if(jsonContent.organizationalUnit) {
+            orgidType = 'organizationalUnit';
+        }
 
+        // Retrieve Directory
+        let directory = 'unknown';
+        if(orgidType == 'legalEntity') {
+            directory = 'legalEntity';
+        } else if(orgidType == 'organizationalUnit') {
+            directory = jsonContent.organizationalUnit.type;
+        }
+        
+        // Retrieve name
+        let name = 'Name is not defined';
+        if(orgidType == 'legalEntity') {
+            name = jsonContent.legalEntity.legalName;
+        } else if(orgidType == 'organizationalUnit') {
+            name = jsonContent.organizationalUnit.name;
+        }
+
+        // Retrieve country
+        let country = '';
+        if(orgidType == 'legalEntity') {
+            country = jsonContent.legalEntity.registeredAddress.country;
+        } else if(orgidType == 'organizationalUnit') {
+            country = jsonContent.organizationalUnit.address.country;
+        }
+
+        // Retrieve logo
+        let logo;
+        if(jsonContent.media) {
+            logo = jsonContent.media.logo;
+        }
+
+        // Retrieve contacts
+        let contacts = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
 
         // Check the LIF deposit amount
         //const orgIdLifDepositAmount = parseFloat(`${organization.deposit.substr(0, organization.deposit.length - lifDecimals)}.${organization.deposit.substr(organization.deposit.length - lifDecimals)}`);
@@ -416,6 +448,7 @@ module.exports = function (config, cached) {
             let organization = {};
             try {
                 organization = await parseOrganization(orgid);
+                log.debug(organization);
                 await cached.upsertOrgid(organization);
             } catch (e) {
                 log.warn('Error during parseOrganization / upsertOrgid', e.toString());
