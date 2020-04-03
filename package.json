@@ -23,6 +23,7 @@
     "mysql2": "^2.0.2",
     "node-fetch": "^2.6.0",
     "node-watch": "^0.6.3",
+    "pg": "^8.0.0",
     "qs": "^6.9.1",
     "request": "^2.88.0",
     "request-promise": "^4.2.5",

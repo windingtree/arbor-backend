@@ -302,7 +302,7 @@ module.exports = function (config, cached) {
     }
 
     // Parse an organization
-    const parseOrganization = async (orgid, parentOrganization = false) => {
+    const parseOrganization = async (orgid) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
 
         // Get the Organization data from the smart contract
@@ -323,11 +323,11 @@ module.exports = function (config, cached) {
 
         // Retrieve the details on the parent
         let parent;
-        if (organization.parentEntity !== orgid0x && parentOrganization === false) {
+        if (organization.parentEntity !== orgid0x) {
             // Attempt to retrieve parent
             try {
                 // Retrieve Parent Organization Details
-                parentOrganization = parseOrganization(organization.parentEntity);
+                let parentOrganization = parseOrganization(organization.parentEntity);
 
                 // Retrieve parent details
                 parent = {
@@ -346,7 +346,7 @@ module.exports = function (config, cached) {
 
         // Retrieve the subsidiaries
         let subsidiaries = [];
-        if(organization.parentEntity !== orgid0x) {
+        if(organization.parentEntity == orgid0x) {
             subsidiaries = await getSubsidiaries(orgid);
         }
 
@@ -485,7 +485,7 @@ module.exports = function (config, cached) {
                 log.info('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
                 for(let orgid of organization.subsidiaries) {
                     try {
-                        let subOrganization = await parseOrganization(orgid, organization);
+                        let subOrganization = await parseOrganization(orgid);
                         await cached.upsertOrgid(subOrganization);
                     } catch (e) {
                         log.warn('Error during [SubOrg] parseOrganization / upsertOrgid', e.toString());
@@ -511,13 +511,16 @@ module.exports = function (config, cached) {
                     organization = await parseOrganization(event.returnValues.orgId);
                     await cached.upsertOrgid(organization);
                     break;
+                
+                // Event fired when a subsidary is created
                 case "SubsidiaryCreated":
-                    organization = await parseOrganization(event.returnValues.parentOrgId);
-                    await cached.upsertOrgid(organization);
-                    subOrganization = await parseOrganization(event.returnValues.subOrgId, organization);
+                    parentOrganization = await parseOrganization(event.returnValues.parentOrgId);
+                    await cached.upsertOrgid(parentOrganization);
+                    subOrganization = await parseOrganization(event.returnValues.subOrgId);
                     await cached.upsertOrgid(subOrganization);
                     break;
-                case "WithdrawDelayChanged":
+                
+                    case "WithdrawDelayChanged":
                     break;
                 default :
                     log.debug(`this event do not have any reaction behavior`);
@@ -537,7 +540,7 @@ module.exports = function (config, cached) {
             
             // Start Listening on all Events
             orgidContract.events.allEvents({ 
-                fromBlock: currentBlockNumber - 10 /* -10 in case of service restart*/ 
+                fromBlock: currentBlockNumber - 500 /* -10 in case of service restart*/ 
             }, (error, event) => {
 
                 // Callback for new errors or events
