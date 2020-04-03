@@ -1,6 +1,4 @@
-FROM node:10-jessie-slim
-
-RUN apt-get update -y && apt-get install -y git
+FROM node:10-alpine3.10
 
 # Create app directory
 WORKDIR /app
@@ -10,9 +8,14 @@ WORKDIR /app
 # where available (npm@5+)
 COPY package*.json ./
 
-RUN yarn install
-# If you are building your code for production
-# RUN npm ci --only=production
+RUN apk add --no-cache \
+			--virtual build-dependencies \
+			python-dev \
+			build-base \
+			wget \
+			git && \
+	yarn install && \
+	apk del build-dependencies
 
 # Add app source
 COPY . .
