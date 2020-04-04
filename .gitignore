@@ -19,3 +19,4 @@ static/tmp/
 yarn-error.log
 .garden
 error.log
+config_aggregator.json
