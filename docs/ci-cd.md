@@ -1,27 +1,13 @@
-# Garden developmet setup
+# Arbor developmet setup
 
-### Install Docker for Mac, enabled Kubernetes and kubectl helm manager
+### Requirements 
 
-https://docs.garden.io/guides/local-kubernetes#docker-for-desktop
+- [docker](https://docs.docker.com/install/)
+- [docker-compose](https://docs.docker.com/compose/install/)
 
-```
-brew install kubernetes-cli
-brew install kubernetes-helm
-```
+### Run docker-compose
 
-### Install Garden
-
-https://docs.garden.io/installation
 
 ```
-brew tap garden-io/garden
-brew install garden-cli
-```
-
-### Run development console [with hot reload]
-
-https://docs.garden.io/guides/development-workflows
-
-```
-garden dev [--hot]
+docker-compose up -d
 ```
