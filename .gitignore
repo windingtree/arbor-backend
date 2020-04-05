@@ -17,3 +17,6 @@ coverage/
 static/tmp/
 /config
 yarn-error.log
+.garden
+error.log
+config_aggregator.json

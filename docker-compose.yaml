@@ -1,0 +1,39 @@
+version: "3.4"
+
+x-common-variables: &common-variables
+  MYSQL_USER: arboruser
+  MYSQL_PASSWORD: arborpassword
+  MYSQL_DATABASE: arbordb
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arbor_backend
+    restart: unless-stopped
+    # env_file: .env
+    environment:
+      <<: *common-variables
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config_aggregator.json:/app/modules/config/lib/config_aggregator.json
+    labels:
+      kompose.service.type: LoadBalancer
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8.0
+    container_name: arbor_mysql
+    restart: unless-stopped
+    # env_file: .env
+    environment:
+      <<: *common-variables
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    ports:
+      - 3306:3306
