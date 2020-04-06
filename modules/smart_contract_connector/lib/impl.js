@@ -26,8 +26,10 @@ module.exports = function (config, cached) {
     var provider = new Web3.providers.WebsocketProvider(WSS_URI);
     const web3 = new Web3(provider);
     const registerProviderEvents = (provider => {
+
         provider.on('connect', function () {
             log.debug('WS Connected');
+            
         });
 
         // Subscribe to websocket error events
@@ -37,11 +39,12 @@ module.exports = function (config, cached) {
         
         // Subscribe to websocket connection errors
         provider.on('end', e => {
-            log.debug('WS closed', e);
+            log.debug(`WS closed, reason: ${e.closeDescription}`);
             log.debug('Attempting to reconnect...');
             provider = new Web3.providers.WebsocketProvider(WSS_URI);
             registerProviderEvents(provider);
             web3.setProvider(provider);
+            listenEvents();
         });
     });
     registerProviderEvents(provider);
@@ -383,10 +386,14 @@ module.exports = function (config, cached) {
 
         // Retrieve country
         let country = '';
-        if(orgidType == 'legalEntity') {
+        if(orgidType == 'legalEntity' && jsonContent.legalEntity.registeredAddress) {
             country = jsonContent.legalEntity.registeredAddress.country;
-        } else if(orgidType == 'organizationalUnit') {
+
+        } else if(orgidType == 'organizationalUnit' && jsonContent.organizationalUnit.address) {
             country = jsonContent.organizationalUnit.address.country;
+        }
+        if(length(country) !== 2) {
+            country = '';
         }
 
         // Retrieve logo
