@@ -50,9 +50,9 @@ module.exports = function (rest, cached) {
             'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'name': Joi.string(),
-            'owner': Joi.string().length(42),
+            'owner': Joi.string().length(42), // Length of an Ethereum address with 0x prefix 
             'country': Joi.string().length(2),
-            'parent.orgid': Joi.string().length(66),
+            'parent.orgid': Joi.string().length(66), // Length of an ORG.ID with 0x prefix 
             'sort': Joi.string(), //?sort=primary-address.street-1,-name
             ...pageSchema
         });
