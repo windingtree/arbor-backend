@@ -20,3 +20,9 @@ yarn-error.log
 .garden
 error.log
 config_aggregator.json
+backend-*.yaml
+docker-compose-resolved.yaml
+.gitsecret/keys/random_seed
+!*.secret
+.gitsecret/envs/develop
+.gitsecret/envs/master

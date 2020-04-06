@@ -7,21 +7,60 @@ name: CI
 on:
   push:
     branches:
-      - '*'
+      - master
+      - develop
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# This workflow contains a jobs for build, push and deploy service to k8s
+
 jobs:
-  # This workflow contains a single job called "build"
+  
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v2
-    - uses: docker/build-push-action@v1
+    - name: checkout git commit
+      uses: actions/checkout@v2
+
+    - name: build and push docker image
+      uses: docker/build-push-action@v1
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         repository: ogwindingtree/arbor-backend
         tag_with_ref: true
+        tag_with_sha: true
+
+  deploy:
+
+    - name: save DigitalOcean kubeconfig
+      uses: digitalocean/action-doctl@master
+      env:
+        DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      with:
+        args: kubernetes cluster kubeconfig show arbor-$GITHUB_REF > $GITHUB_WORKSPACE/.kubeconfig
+
+    - name: install requirements
+      run: |
+        curl -L "https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        curl -L https://github.com/kubernetes/kompose/releases/download/v1.19.0/kompose-linux-amd64 -o /usr/local/bin/kompose
+        chmod +x /usr/local/bin/kompose /usr/local/bin/docker-compose
+
+    - name: generate .env configuration file
+      run: |
+        echo "deb https://dl.bintray.com/sobolevn/deb git-secret main" | tee -a /etc/apt/sources.list
+        wget -qO - https://api.bintray.com/users/sobolevn/keys/gpg/public.key | apt-key add -
+        apt-get update -y && apt-get install -y git-secret
+        echo -e "${{ secrets.GIT_SECRET_GPG_PRIVATE_KEY }}" | gpg --import
+        git-secret reveal -f
+        cat $GITHUB_WORKSPACE/.gitsecret/envs/$GITHUB_REF > .env
+        echo "DOCKER_TAG=$GITHUB_REF" >> .env
+
+    - name: deploy service to k8s
+      run: |
+        docker-compose config > docker-compose-resolved.yaml
+        kompose up --file docker-compose-resolved.yaml
+
+    - name: Verify deployment
+      run: kubectl --kubeconfig=$GITHUB_WORKSPACE/.kubeconfig rollout status deployment/arbor-backend
