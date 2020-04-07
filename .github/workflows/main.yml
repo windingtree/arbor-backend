@@ -49,13 +49,9 @@ jobs:
             --docker-password=${{ secrets.DOCKER_PASSWORD }} \
             --dry-run -o yaml | kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig apply -f - 
 
-    - name: install helm 
-      run: |
-        curl https://helmcharts.gruntwork.io/index.yaml
-        helm repo add gruntwork https://helmcharts.gruntwork.io
-
     - name: deploy service to k8s
       run: |
+        helm repo add gruntwork https://helmcharts.gruntwork.io
         helm --kubeconfig $GITHUB_WORKSPACE/kubeconfig upgrade --install -f values.default.yaml --set containerImage.tag=sha-${GITHUB_SHA::6} arbor-backend gruntwork/k8s-service
 
     # - name: verify deployment
