@@ -23,7 +23,7 @@ jobs:
     - name: checkout git commit
       uses: actions/checkout@v2
 
-    - name: set branch name
+    - name: set branch name and docker tag
       run: 
         echo "::set-env name=BRANCH_NAME::${GITHUB_REF##*/}"
 
@@ -50,7 +50,7 @@ jobs:
 
     - name: deploy service to k8s
       run: |
-        helm --kubeconfig $GITHUB_WORKSPACE/kubeconfig upgrade --install -f values.default.yaml --value containerImage.tag=$BRANCH_NAME arbor-backend gruntwork/k8s-service
+        helm --kubeconfig $GITHUB_WORKSPACE/kubeconfig upgrade --install -f values.default.yaml --set containerImage.tag=sha-${GITHUB_SHA::6} arbor-backend gruntwork/k8s-service
 
     - name: Verify deployment
       run: kubectl rollout status deployment/arbor-backend

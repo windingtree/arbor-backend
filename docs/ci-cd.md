@@ -12,7 +12,6 @@
 - create .env file with environment configuration
 
 ```
-DOCKER_TAG=latest
 MYSQL_HOST=mysql
 MYSQL_PORT=3306
 MYSQL_USER=arboruser
