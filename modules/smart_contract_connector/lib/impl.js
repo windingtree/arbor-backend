@@ -392,7 +392,7 @@ module.exports = function (config, cached) {
         } else if(orgidType == 'organizationalUnit' && jsonContent.organizationalUnit.address) {
             country = jsonContent.organizationalUnit.address.country;
         }
-        if(length(country) !== 2) {
+        if(country.length !== 2) {
             country = '';
         }
 
