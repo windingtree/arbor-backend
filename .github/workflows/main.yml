@@ -45,15 +45,15 @@ jobs:
 
     - name: install requirements
       run: |
-        curl -L "https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        curl -L https://github.com/kubernetes/kompose/releases/download/v1.19.0/kompose-linux-amd64 -o /usr/local/bin/kompose
-        chmod +x /usr/local/bin/kompose /usr/local/bin/docker-compose
+        sudo curl -L "https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo curl -L https://github.com/kubernetes/kompose/releases/download/v1.19.0/kompose-linux-amd64 -o /usr/local/bin/kompose
+        sudo chmod +x /usr/local/bin/kompose /usr/local/bin/docker-compose
 
     - name: generate .env configuration file
       run: |
-        echo "deb https://dl.bintray.com/sobolevn/deb git-secret main" | tee -a /etc/apt/sources.list
-        wget -qO - https://api.bintray.com/users/sobolevn/keys/gpg/public.key | apt-key add -
-        apt-get update -y && apt-get install -y git-secret
+        echo "deb https://dl.bintray.com/sobolevn/deb git-secret main" | sudo tee -a /etc/apt/sources.list
+        wget -qO - https://api.bintray.com/users/sobolevn/keys/gpg/public.key | sudo apt-key add -
+        sudo apt-get update -y && sudo apt-get install -y git-secret
         echo -e "${{ secrets.GIT_SECRET_GPG_PRIVATE_KEY }}" | gpg --import
         git-secret reveal -f
         cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME > .env
