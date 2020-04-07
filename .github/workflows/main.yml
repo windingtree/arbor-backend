@@ -41,7 +41,7 @@ jobs:
       env:
         DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       with:
-        args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME -v --trace
+        args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME > $GITHUB_WORKSPACE/kubeconfig
 
     - name: install requirements
       run: |
@@ -61,6 +61,8 @@ jobs:
 
     - name: deploy service to k8s
       run: |
+        ls -lah 
+        cat .env
         docker-compose config > $GITHUB_WORKSPACE/docker-compose-resolved.yaml
         kompose up --file $GITHUB_WORKSPACE/docker-compose-resolved.yaml --build none
 
