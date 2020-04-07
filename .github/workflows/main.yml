@@ -52,7 +52,6 @@ jobs:
     - name: install helm 
       run: |
         curl https://helmcharts.gruntwork.io/index.yaml
-        ping helmcharts.gruntwork.io
         helm repo add gruntwork https://helmcharts.gruntwork.io
 
     - name: deploy service to k8s
