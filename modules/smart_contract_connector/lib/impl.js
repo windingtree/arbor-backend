@@ -327,7 +327,7 @@ module.exports = function (config, cached) {
             // Attempt to retrieve parent
             try {
                 // Retrieve Parent Organization Details
-                let parentOrganization = parseOrganization(organization.parentEntity);
+                let parentOrganization = await parseOrganization(organization.parentEntity);
 
                 // Retrieve parent details
                 parent = {
