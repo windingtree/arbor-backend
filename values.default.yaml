@@ -20,16 +20,16 @@ ingress:
 #         - chart-example.local
 
 secrets:
-  myothersecret:
+  arbor-backend-mysql:
     as: environment
     items:
-      host:
+      db_host:
         envVarName: MYSQL_HOST
-      port:
+      db_port:
         envVarName: MYSQL_PORT
-      database:
+      db_name:
         envVarName: MYSQL_DATABASE
-      username:
+      db_user:
         envVarName: MYSQL_USER
-      password:
+      db_pass:
         envVarName: MYSQL_PASSWORD

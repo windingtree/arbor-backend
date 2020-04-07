@@ -51,12 +51,13 @@ jobs:
 
     - name: install helm 
       run: |
-        curl -s -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | sudo bash
+        curl https://helmcharts.gruntwork.io/index.yaml
+        ping helmcharts.gruntwork.io
         helm repo add gruntwork https://helmcharts.gruntwork.io
 
     - name: deploy service to k8s
       run: |
         helm --kubeconfig $GITHUB_WORKSPACE/kubeconfig upgrade --install -f values.default.yaml --set containerImage.tag=sha-${GITHUB_SHA::6} arbor-backend gruntwork/k8s-service
 
-    - name: Verify deployment
+    - name: verify deployment
       run: kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig rollout status deployment/arbor-backend
