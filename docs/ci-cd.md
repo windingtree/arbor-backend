@@ -4,8 +4,8 @@
 
 - [docker](https://docs.docker.com/install/)
 - [docker-compose](https://docs.docker.com/compose/install/)
-- [kompose](https://kompose.io/installation/)
-- [git-secret](https://git-secret.io/installation) (optional)
+- [helm](https://kompose.io/installation/)
+- [helm-secret](https://git-secret.io/installation) (optional)
 
 ### Run local environment
 
@@ -35,33 +35,16 @@ docker-compose -f docker-compose.yaml -f docker-compose.db.yaml down
 
 ### Deploy to K8S
 
-- login to Docker Hub
+- add gruntwork helm repo to your library 
 
 ```
-> docker login
-Username: XXXXX
-Password: XXXXX
-Authenticating with existing credentials...
-Login Succeeded
+helm repo add gruntwork https://helmcharts.gruntwork.io
 ```
 
-- resolve docker-compose variables
+- Run the deployment
 
 ```
-docker-compose config > docker-compose-resolved.yaml
+helm upgrade --install -f values.default.yaml --value containerImage.tag=latest arbor-backend gruntwork/k8s-service
 ```
 
-- start up k8s deployments
-
-```
-kompose up --file docker-compose-resolved.yaml
-```
-
-### Manage git-secrets (optional)
-
-- configure `${GITHUB_REF}` environment
-
-```
-git-secret reveal
-vim .gitsecret/envs/${GITHUB_REF}
-```
+### Manage helm-secrets (optional)

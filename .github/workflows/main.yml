@@ -43,28 +43,14 @@ jobs:
       with:
         args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME > $GITHUB_WORKSPACE/kubeconfig
 
-    - name: install requirements
+    - name: install helm 
       run: |
-        sudo curl -L "https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo curl -L https://github.com/kubernetes/kompose/releases/download/v1.19.0/kompose-linux-amd64 -o /usr/local/bin/kompose
-        sudo chmod +x /usr/local/bin/kompose /usr/local/bin/docker-compose
-
-    - name: generate .env configuration file
-      run: |
-        echo "deb https://dl.bintray.com/sobolevn/deb git-secret main" | sudo tee -a /etc/apt/sources.list
-        wget -qO - https://api.bintray.com/users/sobolevn/keys/gpg/public.key | sudo apt-key add -
-        sudo apt-get update -y && sudo apt-get install -y git-secret
-        echo -e "${{ secrets.GIT_SECRET_GPG_PRIVATE_KEY }}" | gpg --import
-        git-secret reveal -f
-        echo "DOCKER_TAG=$BRANCH_NAME\n" > $GITHUB_WORKSPACE/.env
-        cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME >> $GITHUB_WORKSPACE/.env
+        curl -s -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | sudo bash
+        helm repo add gruntwork https://helmcharts.gruntwork.io
 
     - name: deploy service to k8s
       run: |
-        mkdir ~/.kube/ && ln -s $GITHUB_WORKSPACE/kubeconfig ~/.kube/config
-        kubectl get namespaces
-        docker-compose config > $GITHUB_WORKSPACE/docker-compose-resolved.yaml
-        kompose up --file $GITHUB_WORKSPACE/docker-compose-resolved.yaml --build none
+        helm --kubeconfig $GITHUB_WORKSPACE/kubeconfig upgrade --install -f values.default.yaml --value containerImage.tag=$BRANCH_NAME arbor-backend gruntwork/k8s-service
 
     - name: Verify deployment
       run: kubectl rollout status deployment/arbor-backend

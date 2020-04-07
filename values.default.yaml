@@ -1,0 +1,33 @@
+containerImage:
+  repository: ogwindingtree/arbor-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  path: /
+  servicePort: app
+  hosts:
+    - api.develop.arbor.io
+#   tls:
+#     - secretName: chart-example-tls
+#       hosts:
+#         - chart-example.local
+
+secrets:
+  myothersecret:
+    as: environment
+    items:
+      host:
+        envVarName: MYSQL_HOST
+      port:
+        envVarName: MYSQL_PORT
+      database:
+        envVarName: MYSQL_DATABASE
+      username:
+        envVarName: MYSQL_USER
+      password:
+        envVarName: MYSQL_PASSWORD
