@@ -23,6 +23,10 @@ jobs:
     - name: checkout git commit
       uses: actions/checkout@v2
 
+    - name: set branch name
+      run: 
+        echo "::set-env name=BRANCH_NAME::${GITHUB_REF##*/}"
+
     - name: build and push docker image
       uses: docker/build-push-action@v1
       with:
@@ -33,11 +37,11 @@ jobs:
         tag_with_sha: true
 
     - name: save DigitalOcean kubeconfig
-      uses: digitalocean/action-doctl@master
+      uses: digitalocean/action-doctl@v1
       env:
         DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       with:
-        args: kubernetes cluster kubeconfig show arbor-$GITHUB_REF > $GITHUB_WORKSPACE/.kubeconfig
+        args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME -v --trace
 
     - name: install requirements
       run: |
@@ -52,8 +56,8 @@ jobs:
         apt-get update -y && apt-get install -y git-secret
         echo -e "${{ secrets.GIT_SECRET_GPG_PRIVATE_KEY }}" | gpg --import
         git-secret reveal -f
-        cat $GITHUB_WORKSPACE/.gitsecret/envs/$GITHUB_REF > .env
-        echo "DOCKER_TAG=$GITHUB_REF" >> .env
+        cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME > .env
+        echo "DOCKER_TAG=$BRANCH_NAME" >> .env
 
     - name: deploy service to k8s
       run: |
