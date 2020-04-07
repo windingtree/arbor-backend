@@ -43,7 +43,7 @@ jobs:
 
     - name: set imagePullSecret
       run: |
-        kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig config view
+        kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig get namespaces
         kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig create secret docker-registry dockerhub_registry \
             --docker-server=https://index.docker.io/v1/ \
             --docker-username=${{ secrets.DOCKER_USERNAME }} \
