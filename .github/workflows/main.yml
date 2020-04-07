@@ -45,12 +45,12 @@ jobs:
       env:
         KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
       run: |
-        kubectl config view
+        kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig config view
         kubectl create secret docker-registry dockerhub_registry \
             --docker-server=https://index.docker.io/v1/ \
             --docker-username=${{ secrets.DOCKER_USERNAME }} \
             --docker-password=${{ secrets.DOCKER_PASSWORD }} \
-            --dry-run -o yaml | ~/kubectl apply -f - 
+            --dry-run -o yaml | kubectl apply -f - 
 
     - name: install helm 
       run: |
