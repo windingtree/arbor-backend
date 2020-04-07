@@ -56,15 +56,17 @@ jobs:
         sudo apt-get update -y && sudo apt-get install -y git-secret
         echo -e "${{ secrets.GIT_SECRET_GPG_PRIVATE_KEY }}" | gpg --import
         git-secret reveal -f
-        cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME > $GITHUB_WORKSPACE/.env
-        echo "DOCKER_TAG=$BRANCH_NAME" >> $GITHUB_WORKSPACE/.env
+        echo "DOCKER_TAG=$BRANCH_NAME\n" > $GITHUB_WORKSPACE/.env
+        cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME >> $GITHUB_WORKSPACE/.env
 
     - name: deploy service to k8s
+      env:
+        KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
       run: |
-        ls -lah 
-        cat .env
         docker-compose config > $GITHUB_WORKSPACE/docker-compose-resolved.yaml
         kompose up --file $GITHUB_WORKSPACE/docker-compose-resolved.yaml --build none
 
     - name: Verify deployment
-      run: kubectl --kubeconfig=$GITHUB_WORKSPACE/.kubeconfig rollout status deployment/arbor-backend
+      env:
+        KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
+      run: kubectl rollout status deployment/arbor-backend
