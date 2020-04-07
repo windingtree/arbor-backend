@@ -385,14 +385,14 @@ module.exports = function (config, cached) {
         }
 
         // Retrieve country
-        let country = '';
+        let country;
         if(orgidType == 'legalEntity' && jsonContent.legalEntity.registeredAddress) {
             country = jsonContent.legalEntity.registeredAddress.country;
 
         } else if(orgidType == 'organizationalUnit' && jsonContent.organizationalUnit.address) {
             country = jsonContent.organizationalUnit.address.country;
         }
-        if(country.length !== 2) {
+        if(country && country.length !== 2) {
             country = '';
         }
 
