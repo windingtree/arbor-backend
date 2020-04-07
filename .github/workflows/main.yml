@@ -63,6 +63,8 @@ jobs:
       env:
         KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
       run: |
+        ln -s $KUBECONFIG ~/.kube/config
+        kubectl get namespaces
         docker-compose config > $GITHUB_WORKSPACE/docker-compose-resolved.yaml
         kompose up --file $GITHUB_WORKSPACE/docker-compose-resolved.yaml --build none
 
