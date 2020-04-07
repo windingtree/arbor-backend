@@ -17,19 +17,18 @@ MYSQL_PORT=3306
 MYSQL_USER=arboruser
 MYSQL_PASSWORD=arborpassword
 MYSQL_DATABASE=arbordb
-DOMAIN_NAME=api.kubernetes.local
 ```
 
 - run docker-compose 
 
 ```
-docker-compose -f docker-compose.yaml -f docker-compose.db.yaml up -d
+docker-compose up -d
 ```
 
 ### Stop local environment
 
 ```
-docker-compose -f docker-compose.yaml -f docker-compose.db.yaml down
+docker-compose down
 ```
 
 ### Deploy to K8S
