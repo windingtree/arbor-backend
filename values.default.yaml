@@ -1,3 +1,4 @@
+applicationName: arbor
 containerImage:
   repository: ogwindingtree/arbor-backend
   tag: latest
