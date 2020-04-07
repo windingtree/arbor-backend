@@ -60,15 +60,11 @@ jobs:
         cat $GITHUB_WORKSPACE/.gitsecret/envs/$BRANCH_NAME >> $GITHUB_WORKSPACE/.env
 
     - name: deploy service to k8s
-      env:
-        KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
       run: |
-        ln -s $KUBECONFIG ~/.kube/config
+        mkdir ~/.kube/ && ln -s $GITHUB_WORKSPACE/kubeconfig ~/.kube/config
         kubectl get namespaces
         docker-compose config > $GITHUB_WORKSPACE/docker-compose-resolved.yaml
         kompose up --file $GITHUB_WORKSPACE/docker-compose-resolved.yaml --build none
 
     - name: Verify deployment
-      env:
-        KUBECONFIG: $GITHUB_WORKSPACE/kubeconfig
       run: kubectl rollout status deployment/arbor-backend
