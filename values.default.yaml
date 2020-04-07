@@ -3,7 +3,8 @@ containerImage:
   repository: ogwindingtree/arbor-backend
   tag: latest
   pullPolicy: IfNotPresent
-
+imagePullSecrets:
+  - dockerhub-registry
 ingress:
   enabled: true
   annotations:

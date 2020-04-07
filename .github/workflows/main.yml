@@ -43,6 +43,14 @@ jobs:
       with:
         args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME > $GITHUB_WORKSPACE/kubeconfig
 
+    - name: set imagePullSecret
+      uses: azure/k8s-create-secret@v1
+      with:
+        container-registry-username: ${{ secrets.DOCKER_USERNAME }}
+        container-registry-password: ${{ secrets.DOCKER_PASSWORD }}
+        secret-name: dockerhub-registry
+      id: create-secret
+
     - name: install helm 
       run: |
         curl -s -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | sudo bash
