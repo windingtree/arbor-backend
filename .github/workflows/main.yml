@@ -44,12 +44,8 @@ jobs:
         args: kubernetes cluster kubeconfig show arbor-$BRANCH_NAME > $GITHUB_WORKSPACE/kubeconfig
 
     - name: set imagePullSecret
-      uses: azure/k8s-create-secret@v1
-      with:
-        container-registry-username: ${{ secrets.DOCKER_USERNAME }}
-        container-registry-password: ${{ secrets.DOCKER_PASSWORD }}
-        secret-name: dockerhub-registry
-      id: create-secret
+      run:
+        kubectl --kubeconfig $GITHUB_WORKSPACE/kubeconfig create secret docker-registry dockerhub_registry --docker-server=https://index.docker.io/v1/ --docker-username=${{ secrets.DOCKER_USERNAME }} --docker-password=${{ secrets.DOCKER_PASSWORD }} --dry-run -o yaml | kubectl apply -f - 
 
     - name: install helm 
       run: |
