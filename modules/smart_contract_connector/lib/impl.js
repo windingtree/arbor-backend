@@ -374,6 +374,16 @@ module.exports = function (config, cached) {
             directory = 'legalEntity';
         } else if(orgidType == 'organizationalUnit') {
             directory = jsonContent.organizationalUnit.type;
+            // Directory should be an array
+            // But Database expects a string
+            if(Array.isArray(directory)) {
+                // Backward compatibility for Arbor BE
+                if(directory.length === 1) {
+                    directory = directory[0];
+                } else {
+                    directory = JSON.stringify(directory);
+                }
+            }
         }
         
         // Retrieve name
