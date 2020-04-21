@@ -5,6 +5,8 @@ const dns = require('dns');
 const cheerio = require('cheerio');
 const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
 log.level = 'debug';
+const util = require('util');
+const setTimeoutPromise = util.promisify(setTimeout);
 
 // SMART CONTRACTS
 const Web3 = require('web3');
@@ -139,12 +141,26 @@ module.exports = function (config, cached) {
         });
     };
 
+    // Wait for a specific block number
+    const waitForBlockNumber = async (blockNumber) => {
+        let currentBlockNumber = 0;
+        while(currentBlockNumber < blockNumber) {
+            try {
+                currentBlockNumber = await getCurrentBlockNumber();
+                if(blockNumber < currentBlockNumber) break;
+                await setTimeoutPromise(1000);
+            } catch(e) {
+                log.debug('<<< waitForBlockNumber', e.toString());
+            }
+        }
+    };
+
     // Get the ORG.ID contract
-    const getOrgidContract = async () => {
+    const getOrgidContract = () => {
         // Check if cached
         if (!orgidContract) {
             // Retrieve the instance
-            orgidContract = await OrgId.at(environment.orgidAddress);
+            orgidContract = OrgId.at(environment.orgidAddress);
             orgidContract.setProvider(web3.currentProvider);
         }
         
@@ -152,7 +168,7 @@ module.exports = function (config, cached) {
     };
 
     // Get the LIF Deposit contract
-    const getLifDepositContract = async () => {
+    const getLifDepositContract = () => {
         if (!lifDepositContract) {
             lifDepositContract = LifDeposit.at(environment.lifDepositAddress);
             lifDepositContract.setProvider(environment.web3.currentProvider);
@@ -161,7 +177,7 @@ module.exports = function (config, cached) {
     };
 
     // Get the LIF Token contract
-    const getLifTokenContract = async () => {
+    const getLifTokenContract = () => {
         if (!lifTokenContract) {
            lifTokenContract = LifToken.at(environment.lifTokenAddress);
             lifTokenContract.setProvider(environment.web3.currentProvider); 
@@ -171,19 +187,19 @@ module.exports = function (config, cached) {
 
     // Retrieve ALL organizations
     const getOrganizationsList = async () => {
-        let orgidContract = await getOrgidContract();
+        let orgidContract = getOrgidContract();
         return orgidContract.methods.getOrganizations().call();
     };
 
     // Retrieve the details of one organization
-    const getOrganization = async (orgid) => {
-        let orgidContract = await getOrgidContract();
-        try {
-            return orgidContract.methods.getOrganization(orgid).call();
-        } catch (e) {
-            log.error(`Error during getting getOrganization ${orgid} from smartcontract`);
-            throw e;
-        }
+    const getOrganization = (orgid) => {
+        return new Promise((resolve, reject) => {
+            let orgidContract = getOrgidContract();
+            orgidContract.methods.getOrganization(orgid)
+            .call()
+            .then(resolve)
+            .catch(reject);
+        });
     };
 
 
@@ -207,24 +223,24 @@ module.exports = function (config, cached) {
                 // Otherwise, attempt again later
                 setTimeout(() => {
                     getOrganizationWithRetry(orgid, attempts - 1)
-                    .then(organization => resolve(organization))
-                    .catch(error => reject(error));
+                    .then(resolve)
+                    .catch(reject);
                 }, 2*1000);
 
             })
-            .catch(error => reject(error));
+            .catch(reject);
         });
     };
 
     // Get the subsidaries of an orgid
-    const getSubsidiaries = async (orgid) => {
-        let orgidContract = await getOrgidContract();
-        try {
-            return orgidContract.methods.getSubsidiaries(orgid).call();
-        } catch (e) {
-            log.error(`Error during getting getSubsidiaries ${orgid} from smartcontract`);
-            throw e;
-        }
+    const getSubsidiaries = (orgid) => {
+        return new Promise((resolve, reject) => {
+            let orgidContract = getOrgidContract();
+            orgidContract.methods.getSubsidiaries(orgid)
+            .call()
+            .then(resolve)
+            .catch(reject);
+        });
     };
 
     // Get the ORG.ID from Facebook post
@@ -278,7 +294,6 @@ module.exports = function (config, cached) {
             orgJsonUri = 'https://staging-api.arbor.fm' + orgJsonUri.substr(22);
             log.debug(`Replace URI -> ${orgJsonUri}`);
         }
-
 
         // Retrieve off-chain JSON and validate hash
         let jsonContent, orgJsonHashCalculated, isJsonValid, autoCache;
@@ -343,6 +358,8 @@ module.exports = function (config, cached) {
             // In case of error, just log but do not prevent the rest of the resolution
             catch (e) {
                 log.error('Error Resolving parent', e.toString());
+                organization.parentEntity = orgid0x;
+                parent = undefined;
             }
 
         }
@@ -514,6 +531,7 @@ module.exports = function (config, cached) {
 
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
+        await waitForBlockNumber(event.blockNumber);
         try {
             log.debug(event.event ? event.event : event.raw, event.returnValues);
             let organization, subOrganization;
@@ -526,15 +544,19 @@ module.exports = function (config, cached) {
                 case "WithdrawalRequested": // event WithdrawalRequested(bytes32 indexed orgId, address indexed sender, uint256 value, uint256 withdrawTime);
                 case "DepositWithdrawn":    // event DepositWithdrawn   (bytes32 indexed orgId, address indexed sender, uint256 value);
                     organization = await parseOrganization(event.returnValues.orgId);
+                    log.info(JSON.stringify(organization));
                     await cached.upsertOrgid(organization);
                     break;
                 
                 // Event fired when a subsidary is created
                 case "SubsidiaryCreated":
                     parentOrganization = await parseOrganization(event.returnValues.parentOrgId);
-                    await cached.upsertOrgid(parentOrganization);
                     subOrganization = await parseOrganization(event.returnValues.subOrgId);
+                    await cached.upsertOrgid(parentOrganization);
                     await cached.upsertOrgid(subOrganization);
+                    log.info(JSON.stringify(parentOrganization));
+                    log.info(JSON.stringify(subOrganization));
+                    
                     break;
                 
                     case "WithdrawDelayChanged":
@@ -548,25 +570,53 @@ module.exports = function (config, cached) {
 
     };
 
+    // Retrieve past events (for restart/recovery)
+    const recoverPastEvents = (currentBlockNumber) => {
+        return new Promise((resolve, reject) => {
+            const orgidContract = getOrgidContract();
+
+            // Get the last events
+            orgidContract.getPastEvents("allEvents",{
+                fromBlock: currentBlockNumber - 500,
+                toBlock: currentBlockNumber - 1
+            })
+            
+            // Process the past events
+            .then(events => {
+                let remaining = events.length;
+                events.forEach(event => {
+                    resolveOrgidEvent(event)
+                    .then(()=>{
+                        remaining--;
+                        if(remaining == 0) {
+                            resolve();
+                        }
+                    })
+                    .catch(reject);
+                });
+            })
+        });
+    };
+
     const listenEvents = async () => {
         try {
-            const orgidContract = await getOrgidContract();
+            const orgidContract = getOrgidContract();
             let currentBlockNumber = await getCurrentBlockNumber();
+            log.debug(`Recovering Past events`);
+            await recoverPastEvents(currentBlockNumber);
+
             log.debug(`Subscribing to events for Orgid Contract ${orgidContract.options.address}`);
             log.debug(`event listening started...${chalk.grey(`(from block ${currentBlockNumber})`)}`);
             
             // Start Listening on all Events
             orgidContract.events.allEvents({ 
-                fromBlock: currentBlockNumber - 500 /* -10 in case of service restart*/ 
-            }, (error, event) => {
-
-                // Callback for new errors or events
-                if(error) log.debug(`Error: ${error}`);
-                if(event) log.debug(`Event: ${event}`);
+                fromBlock: currentBlockNumber
             })
 
             // Connection established
-            .on('connected', (subscriptionId) => {log.debug(`Connected with ${subscriptionId}`);})
+            .on("connected", (subscriptionId) => {
+                log.debug(`Connected with ${subscriptionId}`);
+            })
 
             // Event Received
             .on('data', resolveOrgidEvent)
