@@ -2,28 +2,28 @@ version: "3.4"
 
 services:
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ogwindingtree/arbor-backend:latest
-    container_name: arbor_backend
-    restart: unless-stopped
-    env_file: .env
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./config_aggregator.json:/app/modules/config/lib/config_aggregator.json
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   image: ogwindingtree/arbor-backend:latest
+  #   container_name: arbor_backend
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./config_aggregator.json:/app/modules/config/lib/config_aggregator.json
 
   mysql:
-    image: mysql:8.0
+    image: mysql
     container_name: arbor_mysql
     restart: unless-stopped
     environment:
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-      MYSQL_TCP_PORT: ${MYSQL_PORT}
+      MYSQL_USER: arboruser
+      MYSQL_PASSWORD: arborpassword
+      MYSQL_DATABASE: arbordb
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_TCP_PORT: 3306
     ports:
-      - 3306:${MYSQL_PORT}
+      - 3306:3306
