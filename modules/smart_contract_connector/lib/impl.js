@@ -16,41 +16,83 @@ const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
 const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
 const LifToken = Contracts.getFromNodeModules('@windingtree/lif-token', 'LifToken');
 
+// Constants
+const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+// Common web3 instance
+const web3 = new Web3();
 
 module.exports = function (config, cached) {
-    // Constants
-    const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    
     const { currentEnvironment, environments } = config();
     const environment = environments[currentEnvironment];
 
-    // Establish websocket and register to events
-    const WSS_URI = `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`;
-    var provider = new Web3.providers.WebsocketProvider(WSS_URI);
-    const web3 = new Web3(provider);
-    const registerProviderEvents = (provider => {
+    let connectionInterval;
+    let connectionTimeout;
 
-        provider.on('connect', function () {
-            log.debug('WS Connected');
-            
-        });
+    const connectionGuard = () => {
+        clearTimeout(connectionTimeout);
+        clearInterval(connectionInterval);
+
+        const connectionValidator = async () => {
+            try {
+                connectionTimeout = setTimeout(() => {
+                    log.debug('Connection timeout. Going to reconnect');
+                    setImmediate(connect);
+                }, 5 * 1000);
+                const blockNumber = await getCurrentBlockNumber();
+                clearTimeout(connectionTimeout);
+                // Save latest block number
+            } catch (error) {
+                log.error('Connection error:', error);
+                setImmediate(connect);
+            }
+        };
+        
+        connectionInterval = setInterval(connectionValidator, 30 * 1000);
+        connectionValidator();
+    };
+
+    const onConnected = () => {
+        log.debug('WS Connected');
+        connectionGuard();
+        listenEvents();
+    };
+
+    const createProvider = environment => {
+        log.debug('Attempting to connect...');
+        const provider = new Web3.providers.WebsocketProvider(
+            `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`
+        );
+        web3.setProvider(provider);
+        return provider;
+    };
+
+    const connect = () => {
+        // Establish websocket and register to events
+        const provider = createProvider(environment);
 
         // Subscribe to websocket error events
         provider.on('error', e => {
             log.debug('WS Connexion Error', e);
+            setImmediate(connect);
         });
-        
+
         // Subscribe to websocket connection errors
         provider.on('end', e => {
             log.debug(`WS closed, reason: ${e.closeDescription}`);
-            log.debug('Attempting to reconnect...');
-            provider = new Web3.providers.WebsocketProvider(WSS_URI);
-            registerProviderEvents(provider);
-            web3.setProvider(provider);
-            listenEvents();
+            setImmediate(connect);
         });
-    });
-    registerProviderEvents(provider);
+        
+        if (provider.connection.readyState === provider.connection.OPEN) {
+            onConnected();
+        } else {
+            provider.on('connect', onConnected);
+        }
+    };
 
+    // Initial connection
+    connect();
 
     // Cached version of the contracts for lazy loading
     var orgidContract;
