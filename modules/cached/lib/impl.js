@@ -84,6 +84,24 @@ module.exports = function (config, models) {
         return { rows: orgids, count }
     };
 
+    const saveBlockNumber = (value = 0) => models.stats.upsert({
+        name: 'blockNumber',
+        value
+    });
+
+    const getBlockNumber = async () => {
+        const record = await models.stats.findOne({
+            where: {
+                name: {
+                    [Op.eq]: 'blockNumber'
+                }
+            }
+        });
+        const value = record && record.value ? Number(record.value) : 0;
+        return String(value) !== 'NaN' ? value : 0;
+    }
+
+    // ??????? model `section` not defined
     const getSegments = async () => {
         let segments = await models.section.findAll();
         segments = _.map(segments, segment => {
@@ -100,6 +118,8 @@ module.exports = function (config, models) {
         getOrgId,
         getOrgIdRaw,
         getOrgIds,
-        getSegments
+        getSegments,
+        saveBlockNumber,
+        getBlockNumber
     });
 };
