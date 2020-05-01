@@ -2,7 +2,7 @@ const _ = require('lodash');
 const chalk = require('chalk');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
-const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
+const log = require('log4js').getLogger('cached');
 log.level = 'debug';
 
 module.exports = function (config, models) {

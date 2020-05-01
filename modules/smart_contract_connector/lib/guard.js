@@ -9,21 +9,19 @@ class ConnectionGuard {
     constructor (
         url,
         onDisconnect = () => {},
-        onConnect = () => {},
-        onBlock = () => {}
+        onConnect = () => {}
     ) {
         // Configuration
         this.url = url;
         this.onDisconnect = onDisconnect;
         this.onConnect = onConnect;
-        this.onBlock = onBlock;
 
         // Web3
         this.web3 = new Web3();
         this.provider;
 
         // Service properties
-        this.web3ApiTimeout = 10 * 1000;
+        this.web3ApiTimeout = 15 * 1000;
         this.isReconnecting = false;
         this.connectRequired = true;
         this.connectionWatcherInterval;
@@ -38,30 +36,6 @@ class ConnectionGuard {
             !this.connectRequired &&
             this.web3.currentProvider.connected;
     }
-
-    async getCurrentBlockNumber () {
-        let counter = 0;
-        let blockNumber;
-
-        do {
-            if (!this.isConnected) {
-                throw new Error(
-                    'Unable to fetch blockNumber: no connection'
-                );
-            }
-
-            if (counter === 10) {
-                throw new Error(
-                    'Unable to fetch blockNumber: retries limit has been reached'
-                );
-            }
-
-            blockNumber = await this.web3.eth.getBlockNumber();
-            counter++;
-        } while (typeof blockNumber !== 'number');
-
-        return blockNumber;
-    };
 
     requestConnection (reason) {
         log.debug('Reconnection requested with reason:', reason);
@@ -105,21 +79,12 @@ class ConnectionGuard {
                     connection.CONNECTING,
                     connection.OPEN
                 ];
-                
-                if (!allowedStates.includes(connection.readyState)) {
+
+                if (this.isConnected) {
+                    // Trying to get block number helps to reveal connection timeouts
+                    await this.web3.eth.getBlockNumber();
+                } else if (!allowedStates.includes(connection.readyState)) {
                     this.requestConnection('disconnection detected');
-                } else if (connection.readyState === connection.CONNECTING) {
-                    this.provider.on('connect', async () => {
-                        try {
-                            const blockNumber = await this.getCurrentBlockNumber();
-                            this.onBlock(blockNumber);
-                        } catch (error) {
-                            this.requestConnection(error.message);
-                        }
-                    });
-                } else {
-                    const blockNumber = await this.getCurrentBlockNumber();
-                    this.onBlock(blockNumber);
                 }
             } catch (error) {
                 this.requestConnection(error.message);
@@ -162,6 +127,5 @@ class ConnectionGuard {
 module.exports = (
     url,
     onDisconnect,
-    onConnect,
-    onBlock
-) => new ConnectionGuard(url, onDisconnect, onConnect, onBlock);
+    onConnect
+) => new ConnectionGuard(url, onDisconnect, onConnect);

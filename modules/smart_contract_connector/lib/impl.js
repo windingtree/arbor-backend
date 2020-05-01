@@ -40,15 +40,6 @@ module.exports = function (config, cached) {
         (_web3) => {
             web3 = _web3;
             listenEvents();
-        },
-        async (blockNumber) => {
-            try {
-                if (isSubscribed) {
-                    await cached.saveBlockNumber(String(blockNumber));
-                }
-            } catch (error) {
-                log.error('Block watcher error:', error.message);
-            }
         }
     );
 
@@ -649,7 +640,9 @@ module.exports = function (config, cached) {
         log.debug("=================== :EVENT: ===================");
 
         try {
-            //await waitForBlockNumber(event.blockNumber);
+            //await waitForBlockNumber(event.blockNumber);// ??? ask about related use-case
+            const currentBlockNumber = await getCurrentBlockNumber();
+            await cached.saveBlockNumber(String(currentBlockNumber));
 
             log.debug(event.event ? event.event : event.raw, event.returnValues);
             
@@ -728,7 +721,7 @@ module.exports = function (config, cached) {
             const orgidContract = getOrgidContract();
             const lastKnownBlockNumber = await cached.getBlockNumber();
 
-            log.debug(`Subscribing to events of Orgid at address: ${orgidContract.options.address}`);
+            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address:  ${orgidContract.options.address}`)}`);
             
             // Start Listening on all Events
             orgidContract.events
@@ -750,7 +743,7 @@ module.exports = function (config, cached) {
                 // Error Event
                 .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
             
-            log.debug(`Events listening started...${chalk.grey(`(from block ${lastKnownBlockNumber})`)}`);
+            log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);
 
             isSubscribed = true;
         } catch (e) {
