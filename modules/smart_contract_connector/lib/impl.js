@@ -9,12 +9,14 @@ const util = require('util');
 const setTimeoutPromise = util.promisify(setTimeout);
 
 // SMART CONTRACTS
-const Web3 = require('web3');
 const lib = require('zos-lib');
 const Contracts = lib.Contracts;
 const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
 const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
 const LifToken = Contracts.getFromNodeModules('@windingtree/lif-token', 'LifToken');
+
+// Web3 Connection Guard
+const connectionGuard = require('./guard');
 
 // Constants
 const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -22,86 +24,29 @@ const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000
 module.exports = function (config, cached) {
     const { currentEnvironment, environments } = config();
     const environment = environments[currentEnvironment];
-    let web3;
 
     let isSubscribed = false;
-    let currentBlockNumber;
-    let connectionInterval;
-    let connectionTimeout;
-
-    const connectionGuard = () => {
-        clearTimeout(connectionTimeout);
-        clearInterval(connectionInterval);
-
-        const connectionValidator = async () => {
+    
+    const web3 = connectionGuard(
+        `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`,
+        // Diconnection handler
+        () => {
+            isSubscribed = false;
+        },
+        // Connection handler
+        () => {
+            listenEvents();
+        },
+        async (blockNumber) => {
             try {
-                const lastKnownBlockNumber = await cached.getBlockNumber();
-
-                connectionTimeout = setTimeout(() => {
-                    log.debug('Connection timeout detected at block:', lastKnownBlockNumber);
-                    connect();
-                }, 5 * 1000);
-
-                currentBlockNumber = await getCurrentBlockNumber();
-                clearTimeout(connectionTimeout);
-
                 if (isSubscribed) {
-                    // Save latest block number
-                    await cached.saveBlockNumber(String(currentBlockNumber));
+                    await cached.saveBlockNumber(String(blockNumber));
                 }
             } catch (error) {
-                log.error('Connection error:', error.message);
-
-                clearTimeout(connectionTimeout);
-                connect();
+                log.error('Block watcher error:', error.message);
             }
-        };
-        
-        connectionInterval = setInterval(connectionValidator, 10 * 1000);
-
-        log.debug('Connection guard started...');
-    };
-
-    const onConnected = () => {
-        log.debug('Connected at:', new Date().toISOString());
-        listenEvents();
-    };
-
-    const createProvider = environment => {
-        const provider = new Web3.providers.WebsocketProvider(
-            `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`
-        );
-        web3 = new Web3(provider);
-        return provider;
-    };
-
-    const connect = () => {
-        log.debug('Connecting to ethereum node...');
-        isSubscribed = false;
-
-        // Establish websocket and register to events
-        const provider = createProvider(environment);
-
-        // Subscribe to websocket error events
-        provider.on('error', e => {
-            log.debug('Web3 provider error:', e.message || 'Cannot connect to node');
-        });
-
-        // Subscribe to websocket connection errors
-        provider.on('end', e => {
-            log.debug('Connection closed:', e.reason || e);
-        });
-        
-        if (provider.connection.readyState === provider.connection.OPEN) {
-            onConnected();
-        } else {
-            provider.on('connect', onConnected);
         }
-    };
-
-    // Initial connection
-    connect();
-    connectionGuard();
+    );
 
     // Cached version of the contracts for lazy loading
     var orgidContract;
@@ -223,13 +168,14 @@ module.exports = function (config, cached) {
        return environment;
     };
 
+    // Get current block number
     const getCurrentBlockNumber = async () => {
         const connection = web3.currentProvider.connection;
         let counter = 0;
         let blockNumber;
 
         if (connection.readyState !== connection.OPEN) {
-            throw new Error('Unable to fetch blockNumber');
+            throw new Error('Unable to fetch blockNumber: no connection');
         }
 
         do {
@@ -802,8 +748,6 @@ module.exports = function (config, cached) {
             
             log.debug(`Event listening started...${chalk.grey(`(from block ${lastKnownBlockNumber})`)}`);
 
-            // Save the blockNumber where we subscribed to events on
-            await cached.saveBlockNumber(String(currentBlockNumber));
             isSubscribed = true;
         } catch (e) {
             log.error('Error during listenEvents', e.toString());
