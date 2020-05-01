@@ -1,3 +1,4 @@
+const Web3 = require('web3');
 const _ = require('lodash');
 const chalk = require('chalk');
 const fetch = require('node-fetch');
@@ -26,15 +27,18 @@ module.exports = function (config, cached) {
     const environment = environments[currentEnvironment];
 
     let isSubscribed = false;
-    
-    const web3 = connectionGuard(
+
+    let web3;
+
+    connectionGuard(
         `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`,
         // Diconnection handler
         () => {
             isSubscribed = false;
         },
         // Connection handler
-        () => {
+        (_web3) => {
+            web3 = _web3;
             listenEvents();
         },
         async (blockNumber) => {
@@ -644,9 +648,9 @@ module.exports = function (config, cached) {
     const resolveOrgidEvent = async (event) => {
         log.debug("=================== :EVENT: ===================");
 
-        await waitForBlockNumber(event.blockNumber);
-
         try {
+            //await waitForBlockNumber(event.blockNumber);
+
             log.debug(event.event ? event.event : event.raw, event.returnValues);
             
             let organization, subOrganization;

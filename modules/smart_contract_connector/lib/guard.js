@@ -110,6 +110,7 @@ class ConnectionGuard {
         this.provider = new Web3.providers.WebsocketProvider(this.url, {
             timeout: 9999
         });
+        this.web3 = new Web3(this.provider);
 
         this.provider.on('error', e => {
             const message = e.message || 'cannot connect';
@@ -127,16 +128,15 @@ class ConnectionGuard {
             clearTimeout(this.connectionTimeout);
             log.debug('Connected');
             this.isReconnecting = false;
-            this.onConnect();
+            this.onConnect(this.web3);
             this.connectionWatcher();
         });
-
-        this.web3.setProvider(this.provider);
     }
 }
 
-module.exports = (url, onDisconnect, onConnect, onBlock) => {
-    const cg = new ConnectionGuard(url, onDisconnect, onConnect, onBlock);
-    log.info('Connection Guard Initialized');
-    return cg.web3;
-};
+module.exports = (
+    url,
+    onDisconnect,
+    onConnect,
+    onBlock
+) => new ConnectionGuard(url, onDisconnect, onConnect, onBlock);
