@@ -4,7 +4,7 @@ const chalk = require('chalk');
 const fetch = require('node-fetch');
 const dns = require('dns');
 const cheerio = require('cheerio');
-const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
+const log = require('log4js').getLogger('smart_contracts_connector');
 log.level = 'debug';
 const util = require('util');
 const setTimeoutPromise = util.promisify(setTimeout);
@@ -54,8 +54,8 @@ module.exports = function (config, cached) {
 
     // Cached version of the contracts for lazy loading
     var orgidContract;
-    var lifDepositContract;
-    var lifTokenContract;
+    // var lifDepositContract;
+    // var lifTokenContract;
 
     // Get the Organizations in DNS for the DNS Trust Clue
     const getOrgidFromDns = async (link) => new Promise((resolve) => {
@@ -168,9 +168,7 @@ module.exports = function (config, cached) {
     });
 
     // Get the current environment
-    const getEnvironment = () => {
-       return environment;
-    };
+    const getEnvironment = () => environment;
 
     // Get current block number
     const getCurrentBlockNumber = async () => {
@@ -178,17 +176,17 @@ module.exports = function (config, cached) {
         let counter = 0;
         let blockNumber;
 
-        if (connection.readyState !== connection.OPEN) {
-            throw new Error('Unable to fetch blockNumber: no connection');
-        }
-
         do {
+            if (!web3.currentProvider.connected) {
+                throw new Error('Unable to fetch blockNumber: no connection');
+            }
+
             if (counter === 10) {
-                throw new Error('Unable to fetch blockNumber');
+                throw new Error('Unable to fetch blockNumber: retries limit has been reached');
             }
             blockNumber = await web3.eth.getBlockNumber();
             counter++;
-        } while (typeof blockNumber !== 'number')
+        } while (typeof blockNumber !== 'number');
 
         return blockNumber;
     };
@@ -219,37 +217,39 @@ module.exports = function (config, cached) {
         if (!orgidContract) {
             // Retrieve the instance
             orgidContract = OrgId.at(environment.orgidAddress);
-            orgidContract.setProvider(web3.currentProvider);
         }
+
+        // Refresh the provider because it can be changed
+        orgidContract.setProvider(web3.currentProvider);
         
         return orgidContract
     };
 
     // ?????????? Lif deposit intagrated into OrgId
     // Get the LIF Deposit contract
-    const getLifDepositContract = () => {
+    // const getLifDepositContract = () => {
 
-        if (!lifDepositContract) {
-            lifDepositContract = LifDeposit.at(environment.lifDepositAddress);
-            lifDepositContract.setProvider(environment.web3.currentProvider);
-        }
+    //     if (!lifDepositContract) {
+    //         lifDepositContract = LifDeposit.at(environment.lifDepositAddress);
+    //         lifDepositContract.setProvider(environment.web3.currentProvider);
+    //     }
 
-        return lifDepositContract;
-    };
+    //     return lifDepositContract;
+    // };
 
     // Get the LIF Token contract
-    const getLifTokenContract = () => {
+    // const getLifTokenContract = () => {
 
-        if (!lifTokenContract) {
-           lifTokenContract = LifToken.at(environment.lifTokenAddress);
-            lifTokenContract.setProvider(environment.web3.currentProvider); 
-        }
+    //     if (!lifTokenContract) {
+    //        lifTokenContract = LifToken.at(environment.lifTokenAddress);
+    //         lifTokenContract.setProvider(environment.web3.currentProvider); 
+    //     }
 
-        return lifTokenContract;
-    };
+    //     return lifTokenContract;
+    // };
 
     // Retrieve ALL organizations
-    const getOrganizationsList = async () => {
+    const getOrganizationsList = () => {
         const orgidContract = getOrgidContract();
         return orgidContract.methods.getOrganizations().call();
     };
@@ -750,7 +750,7 @@ module.exports = function (config, cached) {
                 // Error Event
                 .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
             
-            log.debug(`Event listening started...${chalk.grey(`(from block ${lastKnownBlockNumber})`)}`);
+            log.debug(`Events listening started...${chalk.grey(`(from block ${lastKnownBlockNumber})`)}`);
 
             isSubscribed = true;
         } catch (e) {
@@ -765,8 +765,8 @@ module.exports = function (config, cached) {
         visibleForTests: {
             getEnvironment,
             getOrgidContract,
-            getLifDepositContract,
-            getLifTokenContract,
+            // getLifDepositContract,
+            // getLifTokenContract,
             getOrganizationsList,
             getOrganization,
             getSubsidiaries,
