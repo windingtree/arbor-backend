@@ -50,20 +50,16 @@ class ConnectionGuard {
 
         setInterval(() => {
             if (this.connectRequired && !this.isReconnecting) {
-                log.debug('Going to connect in 5 sec');
+                log.debug(
+                    `Going to connect in ${this.web3ApiTimeout / 3} ms`
+                );
 
                 this.connectRequired = false;
                 this.isReconnecting = true;
                 this.onDisconnect();
 
-                // Connect with delay 5 sec
-                setTimeout(() => {
-                    this.connectionTimeout = setTimeout(() => {
-                        this.isReconnecting = false;
-                        this.requestConnection('connection timeout');
-                    }, this.web3ApiTimeout / 2);
-                    this.connect();
-                }, this.web3ApiTimeout / 2);
+                // Connect with delay `web3ApiTimeout / 2` ms
+                setTimeout(() => this.connect(), this.web3ApiTimeout / 3);
             }
         }, this.web3ApiTimeout / 10);
     }
@@ -94,6 +90,11 @@ class ConnectionGuard {
 
     connect () {
         log.debug('Connecting...');
+
+        this.connectionTimeout = setTimeout(() => {
+            this.isReconnecting = false;
+            this.requestConnection('connection timeout');
+        }, this.web3ApiTimeout / 2);
         
         this.provider = new Web3.providers.WebsocketProvider(this.url, {
             timeout: this.web3ApiTimeout * 2
