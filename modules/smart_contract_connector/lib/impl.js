@@ -393,16 +393,8 @@ module.exports = function (config, cached) {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
 
         // Get the Organization data from the smart contract
-        let organization;
+        const organization = await getOrganizationWithRetry(orgid);
 
-        try {
-            organization = await getOrganizationWithRetry(orgid);
-        } catch (e) {
-            log.error(e.toString());
-
-            return {};
-        }
-        
         log.debug(`Organization Details: ${JSON.stringify(organization)}`);
 
         let owner = organization.owner;
