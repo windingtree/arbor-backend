@@ -38,7 +38,10 @@ class ConnectionGuard {
     }
 
     requestConnection (reason) {
-        log.debug('Reconnection requested with reason:', reason);
+        log.debug(
+            `Reconnection requested${this.isReconnecting ? ' (ignored due to "connecting" state).' : '.'} Reason:`,
+            reason
+        );
 
         if (!this.isReconnecting) {
             this.connectRequired = true;
@@ -94,7 +97,7 @@ class ConnectionGuard {
         this.connectionTimeout = setTimeout(() => {
             this.isReconnecting = false;
             this.requestConnection('connection timeout');
-        }, this.web3ApiTimeout / 2);
+        }, this.web3ApiTimeout);
         
         this.provider = new Web3.providers.WebsocketProvider(this.url, {
             timeout: this.web3ApiTimeout * 2
