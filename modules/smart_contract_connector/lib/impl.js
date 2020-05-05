@@ -1,450 +1,209 @@
 const Web3 = require('web3');
 const _ = require('lodash');
 const chalk = require('chalk');
-const fetch = require('node-fetch');
-const dns = require('dns');
-const cheerio = require('cheerio');
-const log = require('log4js').getLogger('smart_contracts_connector');
-log.level = 'debug';
-const util = require('util');
-const setTimeoutPromise = util.promisify(setTimeout);
-
-// SMART CONTRACTS
-const lib = require('zos-lib');
-const Contracts = lib.Contracts;
-const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
-const LifDeposit = Contracts.getFromNodeModules('@windingtree/trust-clue-lif-deposit', 'LifDeposit');
-const LifToken = Contracts.getFromNodeModules('@windingtree/lif-token', 'LifToken');
+const {
+    createResolver,
+    getTrustAssertsion,
+    getCurrentBlockNumber,
+    checkSslByUrl
+} = require('./utils');
 
 // Web3 Connection Guard
 const connectionGuard = require('./guard');
 
+const log = require('log4js').getLogger('smart_contracts_connector');
+log.level = 'debug';
+
+// // SMART CONTRACTS
+// const lib = require('zos-lib');
+// const Contracts = lib.Contracts;
+// const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
+
 // Constants
 const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-module.exports = function (config, cached) {
+module.exports = (config, cached) => {
     const { currentEnvironment, environments } = config();
     const environment = environments[currentEnvironment];
-
-    let isSubscribed = false;
-
-    let web3;
-
+    
+    // Start connection for events listener with guard
     connectionGuard(
         `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`,
         // Diconnection handler
-        () => {
-            isSubscribed = false;
-        },
+        () => {},
         // Connection handler
-        (_web3) => {
-            web3 = _web3;
-            listenEvents();
+        async web3 => {
+            try {
+                const orgIdResolver = createResolver(
+                    web3,
+                    environment.orgidAddress
+                );
+                orgidContract = await orgIdResolver.getOrgIdContract();
+                listenEvents(web3, orgidContract.contract, orgIdResolver);
+            } catch (error) {
+                log.error('Before subscribe:', error)
+            }
         }
     );
-
-    // Cached version of the contracts for lazy loading
-    var orgidContract;
-    // var lifDepositContract;
-    // var lifTokenContract;
-
-    // Get the Organizations in DNS for the DNS Trust Clue
-    const getOrgidFromDns = async (link) => new Promise((resolve) => {
-        try {
-
-            if (link.indexOf('://') === -1) {
-                link = `https://${link}`;
-            }
-
-            const myURL = new URL(link);
-            dns.resolveTxt(myURL.hostname, (err, data) => {
-
-                if (err) {
-                    return resolve(undefined);
-                }
-
-                let orgid = _.get(
-                    _.filter(
-                        data,
-                        record => record && record.length && record[0].indexOf('orgid=') === 0
-                    ),
-                    '[0][0]',
-                    false
-                );
-
-                if (orgid) {
-                    orgid = orgid.replace('orgid=', '').replace('did:orgid:');
-                }
-
-                return resolve(orgid);
-            });
-        } catch (e) {
-            resolve(false)
-        }
-    });
-
-    // Get the Organizations in URL for the Domain Trust Clue
-    const getOrgidFromUrl = async (link) => new Promise(async (resolve) => {
-        try {
-            const fetched = await fetch(`${link}/org.id`);
-            let body = await fetched.text();
-            body = body.replace('orgid=', '').replace('did:orgid:');
-            resolve(body);
-        } catch (e) {
-            resolve(false);
-        }
-    });
-
-    const getOrgidFromLink = async (link) => {
-        let orgid = await getOrgidFromDns(link);
-
-        if (!orgid) {
-            orgid = await getOrgidFromUrl(link);
-        }
-
-        return orgid;
-    };
-
-    const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) => {
-       
-        if (link.indexOf('://') === -1) {
-            link = `https://${link}`;
-        }
-
-        const dns = await getOrgidFromDns(link);
-
-        if (dns === undefined) {
-            return resolve(dns);
-        }
-
-        let requestSsl;
+    
+    // Start Listening on all OrgId contract Events
+    const listenEvents = async (web3, orgidContract, orgIdResolver) => {
 
         try {
-            let { hostname } = new URL(link);
-            let isAuthorized = false;
-            const options = {
-                host: hostname,
-                method: 'get',
-                path: '/',
-                agent: new https.Agent({ maxCachedSessions: 0 }) 
-            };
-            let companySiteHostnameFromServer;
-            let legalNameFromServer;
-            requestSsl = https.request(options, (response) => {
-                let subject = response.socket.getPeerCertificate().subject;
-                let CN = subject.CN.replace('*.','');
+            const lastKnownBlockNumber = await cached.getBlockNumber();
 
-                if (CN.indexOf('://') === -1) {
-                    CN = `https://${CN}`;
-                }
+            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address: ${orgidContract.address}`)}`);
 
-                companySiteHostnameFromServer = new URL(CN).hostname;
-                legalNameFromServer = subject.O;
+            orgidContract.events
+                .allEvents({ 
+                    fromBlock: lastKnownBlockNumber - 900
+                })
 
-                log.debug(companySiteHostnameFromServer, legalNameFromServer);
+                // Connection established
+                .on('connected', subscriptionId => {
+                    log.debug(`Connected with ${subscriptionId}`);
+                })
 
-                isAuthorized = response.socket.authorized;
-                resolve(
-                    isAuthorized &&
-                    (legalNameFromServer === expectedLegalName) &&
-                    (companySiteHostnameFromServer === hostname)
+                // Event Received
+                .on(
+                    'data',
+                    event => resolveOrgidEvent(
+                        web3,
+                        orgidContract,
+                        orgIdResolver,
+                        event
+                    )
                 )
-            });
-            requestSsl.end();
-        } catch (e) {
-            log.debug('checkSslByUrl [ERROR]', e.toString());
 
-            resolve(false)
+                // Change event
+                .on('changed', event => log.debug("=================== Changed ===================\r\n", event))
+
+                // Error Event
+                .on('error', error => log.debug("=================== ERROR ===================\r\n", error));
+            
+            log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);            
+        } catch (error) {
+            log.error('Error during listenEvents', error.toString());
         }
-    });
-
-    // Get the current environment
-    const getEnvironment = () => environment;
-
-    // Get current block number
-    const getCurrentBlockNumber = async () => {
-        const connection = web3.currentProvider.connection;
-        let counter = 0;
-        let blockNumber;
-
-        do {
-            if (!web3.currentProvider.connected) {
-                throw new Error('Unable to fetch blockNumber: no connection');
-            }
-
-            if (counter === 10) {
-                throw new Error('Unable to fetch blockNumber: retries limit has been reached');
-            }
-            blockNumber = await web3.eth.getBlockNumber();
-            counter++;
-        } while (typeof blockNumber !== 'number');
-
-        return blockNumber;
     };
 
-    // Wait for a specific block number
-    const waitForBlockNumber = async (blockNumber) => {
-        let currentBlockNumber = 0;
+    // Process the event
+    const resolveOrgidEvent = async (web3, orgidContract, orgIdResolver, event) => {
+        log.debug(`=================== :EVENT: ${event.event} : ===================`);
 
-        while (currentBlockNumber < blockNumber) {
+        try {
+            const currentBlockNumber = await getCurrentBlockNumber(web3);
+            
+            log.debug(event.event ? event.event : event.raw, event.returnValues);
+            
+            let organization;
+            let subOrganization;
 
-            try {
-                currentBlockNumber = await getCurrentBlockNumber();
+            switch (event.event) {
+                case "OrganizationCreated":
+                case "OrganizationOwnershipTransferred":
+                case "OrgJsonUriChanged":
+                case "OrgJsonHashChanged":
+                case "LifDepositAdded": 
+                case "WithdrawalRequested":
+                case "DepositWithdrawn":
+                    organization = await parseOrganization(
+                        web3,
+                        orgidContract,
+                        event.returnValues.orgId,
+                        orgIdResolver
+                    );
+                    await cached.upsertOrgid(organization);
 
-                if (blockNumber < currentBlockNumber) {
+                    log.info('Parsed organization:', JSON.stringify(organization));
                     break;
-                }
+                
+                // Event fired when a subsidary is created
+                case "SubsidiaryCreated":
+                    parentOrganization = await parseOrganization(
+                        web3,
+                        orgidContract,
+                        event.returnValues.parentOrgId,
+                        orgIdResolver
+                    );
+                    subOrganization = await parseOrganization(
+                        web3,
+                        orgidContract,
+                        event.returnValues.subOrgId,
+                        orgIdResolver
+                    );
+                    await cached.upsertOrgid(parentOrganization);
+                    await cached.upsertOrgid(subOrganization);
+                    
+                    log.info(JSON.stringify(parentOrganization));
+                    log.info(JSON.stringify(subOrganization));
+                    break;
+                
+                case "WithdrawDelayChanged":
+                    break;
 
-                await setTimeoutPromise(1000);
-            } catch(e) {
-                log.debug('<<< waitForBlockNumber', e.toString());
+                default:
+                    log.debug(`this event do not have any reaction behavior`);
             }
+
+            // Saving a block number where the event has been successfully parsed
+            await cached.saveBlockNumber(String(currentBlockNumber));
+        } catch (error) {
+            log.error('Error during resolve event', error);
         }
     };
-
-    // Get the ORG.ID contract
-    const getOrgidContract = () => {
-        // Check if cached
-        if (!orgidContract) {
-            // Retrieve the instance
-            orgidContract = OrgId.at(environment.orgidAddress);
-        }
-
-        // Refresh the provider because it can be changed
-        orgidContract.setProvider(web3.currentProvider);
-        
-        return orgidContract
-    };
-
-    // ?????????? Lif deposit intagrated into OrgId
-    // Get the LIF Deposit contract
-    // const getLifDepositContract = () => {
-
-    //     if (!lifDepositContract) {
-    //         lifDepositContract = LifDeposit.at(environment.lifDepositAddress);
-    //         lifDepositContract.setProvider(environment.web3.currentProvider);
-    //     }
-
-    //     return lifDepositContract;
-    // };
-
-    // Get the LIF Token contract
-    // const getLifTokenContract = () => {
-
-    //     if (!lifTokenContract) {
-    //        lifTokenContract = LifToken.at(environment.lifTokenAddress);
-    //         lifTokenContract.setProvider(environment.web3.currentProvider); 
-    //     }
-
-    //     return lifTokenContract;
-    // };
-
-    // Retrieve ALL organizations
-    const getOrganizationsList = () => {
-        const orgidContract = getOrgidContract();
-        return orgidContract.methods.getOrganizations().call();
-    };
-
-    // Retrieve the details of one organization
-    const getOrganization = (orgid) => new Promise((resolve, reject) => {
-        const orgidContract = getOrgidContract();
-        orgidContract.methods
-            .getOrganization(orgid)
-            .call()
-            .then(resolve)
-            .catch(reject);
-    });
-
-    // Get an organization with retry attempts
-    const getOrganizationWithRetry = (orgid, attempts = 5) => new Promise((resolve, reject) => {
-        // Check if we reached maximum attempts
-        if (attempts == 0) {
-            reject("Organization not retrieved after max attemps");
-        }
-
-        // Retrieve organization
-        getOrganization(orgid)
-            .then(organization => {
-
-                // Check if organization exists
-                if (organization.exist) {
-                    resolve(organization);
-                }
-
-                // Otherwise, attempt again later
-                setTimeout(() => {
-                    getOrganizationWithRetry(orgid, attempts - 1)
-                        .then(resolve)
-                        .catch(reject);
-                }, 2 * 1000);
-
-            })
-            .catch(reject);
-    });
 
     // Get the subsidaries of an orgid
-    const getSubsidiaries = orgid => new Promise((resolve, reject) => {
-        const orgidContract = getOrgidContract();
-        orgidContract.methods
+    const getSubsidiaries = (orgidContract, orgid) => {
+        return orgidContract.methods
             .getSubsidiaries(orgid)
-            .call()
-            .then(resolve)
-            .catch(reject);
-    });
-
-    // Get the ORG.ID from Facebook post
-    const getOrgIdFromFacebookPost = socialUrl => new Promise(async (resolve) => {
-
-        try {
-            const orgJsonResponse = await fetch(socialUrl);
-            process.stdout.write('[FB::READ-OK]\n');
-            const orgJsonText = await orgJsonResponse.text();
-            const $ = cheerio.load(orgJsonText);
-            let insideCode = '';
-            let $code;
-            let post = '';
-            const i = 0;
-
-            do {
-                insideCode = $(`.hidden_elem > code`)
-                    .eq(i++)
-                    .html()
-                    .replace('<!--', '')
-                    .replace('-->', '')
-                    .replace('\"', '"');
-                $code = cheerio.load(insideCode);
-                post = $code('[data-testid="post_message"] > div > p').html();
-            } while (!!$code && !post && i < 20);
-
-            if (!post) {
-                return resolve(false);
-            }
-
-            const [orgid] = post.match(/0x[0-9ABCDEFabcdef]{64}/) || [false];
-            resolve(orgid)
-        } catch (e) {
-            log.warn('Error during getOrgIdFromFacebookPost:', e.toString());
-
-            resolve(false);
-        }
-    });
-
-    // Get the ORG.ID from Twitter post
-    const getOrgIdFromTwitterPost = (socialUrl) => new Promise(async (resolve) => {
-        try {
-            const orgJsonResponse = await fetch(socialUrl);
-            process.stdout.write('[WT::READ-OK]\n');
-            const orgJsonText = await orgJsonResponse.text();
-            const $ = cheerio.load(orgJsonText);
-            const post = $(`.js-tweet-text`).text();
-
-            if (!post) {
-                return resolve(false);
-            }
-
-            const [orgid] = post.match(/0x[0-9ABCDEFabcdef]{64}/) || [false];
-            resolve(orgid)
-        } catch (e) {
-            log.warn('Error during getOrgIdFromFacebookPost:', e.toString());
-
-            resolve(false)
-        }
-    });
-
-    // Parse the JSON of an organization
-    const parseOrganizationJson = async (orgJsonUri, orgJsonHash) => {
-        // Bypass for localhost issue
-        // @fixme: to be removed
-        if (orgJsonUri.substr(0,22) == 'https://localhost:3333') {
-            orgJsonUri = 'https://staging-api.arbor.fm' + orgJsonUri.substr(22);
-            
-            log.debug(`Replace URI -> ${orgJsonUri}`);
-        }
-
-        // Retrieve off-chain JSON and validate hash
-        let jsonContent, orgJsonHashCalculated, isJsonValid, autoCache;
-
-        try {
-            const orgJsonResponse = await fetch(orgJsonUri);
-            const orgJsonText = await orgJsonResponse.text();
-            orgJsonHashCalculated = Web3.utils.keccak256(orgJsonText);
-            jsonContent = JSON.parse(orgJsonText);
-            autoCache = Web3.utils.keccak256(JSON.stringify(jsonContent, null, 2));
-            isJsonValid = (orgJsonHashCalculated === orgJsonHash) || (autoCache === orgJsonHash);
-            
-            // Validation of JSON content
-            if (!jsonContent) {
-                log.error('Error Resolving JSON content');
-            }
-
-            if (!isJsonValid) {
-                log.error(`(got hash=${chalk.red(orgJsonHashCalculated === autoCache ? autoCache : `${orgJsonHashCalculated} ~ ${autoCache}`)} BUT expected ${chalk.green(orgJsonHash)}) for uri ${orgJsonUri}`);
-            }
-
-            return jsonContent;
-        } catch (e) {
-            log.debug('[ERROR]\n');
-            log.debug(e.toString());
-        }
-    }
+            .call();
+    };
 
     // Parse an organization
-    const parseOrganization = async (orgid) => {
+    const parseOrganization = async (web3, orgidContract, orgid, orgIdResolver) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
 
-        // Get the Organization data from the smart contract
-        const organization = await getOrganizationWithRetry(orgid);
+        const resolverResult = await orgIdResolver.resolve(`did:orgid:${orgid}`);
 
-        log.debug(`Organization Details: ${JSON.stringify(organization)}`);
+        // Show resolver errors
+        if (resolverResult.errors && resolverResult.errors.length > 0) {
+            resolverResult.errors.forEach(error => {
+                log.warn(error.title, JSON.stringify(error));
+            });
+        }
+        
+        let jsonContent;
 
-        let owner = organization.owner;
-        let director = organization.director;
-        let state = organization.state;
-        let directorConfirmed = organization.directorConfirmed;
+        if (resolverResult.didDocument && resolverResult.organization) {
+            jsonContent = resolverResult.didDocument;
+        } else {
+            throw new Error(
+                `Unable to resolve a DID document for the orgId: ${orgid}`
+            );
+        }
 
-        // Retrieve the details on the parent
+        log.debug(`Organization Details: ${JSON.stringify(resolverResult.organization)}`);
+        log.debug(`Organization DID document: ${JSON.stringify(resolverResult.didDocument)}`);
+
+        const {
+            owner,
+            director,
+            state,
+            directorConfirmed,
+            parentEntity,
+            deposit
+        } = resolverResult.organization;
+
+        // Retrieve the parent organization (if exists)
         let parent;
 
-        if (organization.parentEntity !== orgid0x) {
-            // Attempt to retrieve parent
+        if (parentEntity !== orgid0x) {
             try {
-                // Retrieve Parent Organization Details
-                let parentOrganization = await parseOrganization(organization.parentEntity);
-
-                // Retrieve parent details
-                parent = {
-                    orgid: organization.parentEntity,
-                    name: parentOrganization.name,
-                    proofsQty: parentOrganization.proofsQty || 0
-                }
+                parent = await parseOrganization(web3, orgidContract, parentEntity);
+            } catch (error) {
+                log.error('Unable to resolve parent organization', error.toString());
             }
-
-            // In case of error, just log but do not prevent the rest of the resolution
-            catch (e) {
-                log.error('Error Resolving parent', e.toString());
-
-                organization.parentEntity = orgid0x;
-                parent = undefined;
-            }
-
-        }
-
-        // Retrieve the subsidiaries
-        let subsidiaries = [];
-
-        if (organization.parentEntity == orgid0x) {
-            subsidiaries = await getSubsidiaries(orgid);
-        }
-
-        // Retrieve the offchain data
-        let jsonContent= await parseOrganizationJson(organization.orgJsonUri, organization.orgJsonHash);
-
-        if (!jsonContent) {
-            log.error('Error Resolving JSON content');
-
-            throw new Error(
-                'Organization resolution aborted due to error retrieving JSON content'
-            ); 
         }
 
         // Retrieve OrgID Type
@@ -474,7 +233,7 @@ module.exports = function (config, cached) {
                 }
             }
         }
-        
+
         // Retrieve name
         let name = 'Name is not defined';
 
@@ -506,66 +265,41 @@ module.exports = function (config, cached) {
         }
 
         // Retrieve contacts
-        let contacts = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
+        let contact = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
 
         // Check the LIF deposit amount
-        //const orgIdLifDepositAmount = parseFloat(`${organization.deposit.substr(0, organization.deposit.length - lifDecimals)}.${organization.deposit.substr(organization.deposit.length - lifDecimals)}`);
-        let lifDeposit = web3.utils.fromWei(organization.deposit, 'ether');
+        let lifDeposit = web3.utils.fromWei(deposit, 'ether');
         let isLifProved = lifDeposit >= environment.lifMinimumDeposit;
 
         // Facebook Trust clue
-        let isSocialFBProved = false;
-        const trustFacebookUri = _.get(
-            _.filter(
-                _.get(jsonContent, `trust`, []),
-                clue => ['social', 'facebook'].indexOf(clue.type) !== -1 && clue.proof.indexOf('facebook') !== -1
-            ),
-            '[0].proof',
-            false
-        );
+        const isSocialFBProved = getTrustAssertsion(resolverResult, 'social', 'facebook');
 
-        if (trustFacebookUri) {
-            isSocialFBProved =  (await getOrgIdFromFacebookPost(trustFacebookUri)) === orgid;
-        }
-        
         // Twitter Trust clue
-        let isSocialTWProved = false;
-        const trustTwitterUri = _.get(
-            _.filter(
-                _.get(jsonContent, `trust`, []),
-                clue => ['social', 'twitter'].indexOf(clue.type) !== -1 && clue.proof.indexOf('twitter') !== -1
-            ),
-            '[0].proof',
-            false
-        );
-        
-        if (trustTwitterUri) {
-            isSocialTWProved = (await getOrgIdFromTwitterPost(trustFacebookUri)) === orgid;
-        }
+        const isSocialTWProved = getTrustAssertsion(resolverResult, 'social', 'twitter');
 
         // Instagram Trust clue
-        // @fixme to be implemented
-        let isSocialIGProved = false;
+        const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 'instagram');
 
         // Linkedin Trust clue
-        // @fixme to be implemented
-        let isSocialLNProved = false;
+        const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
 
-        // Overall Social Trust proof
-        let isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
-
-        // Website Trust clue
-        const {website} = contacts;
-        const isWebsiteProved = (orgid === (await getOrgidFromLink(website)));
+        // Web-site Trust clue
+        // @todo Website assetion should be obtained from the trust assertion record
+        const isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', contact.website);
 
         // SSL Trust clue
-        let isSslProved = false;
+        const isSslProved = isWebsiteProved ? checkSslByUrl(website) : false;
 
-        if (isWebsiteProved) {
-            isSslProved = checkSslByUrl(website);
-        }
+        // Overall Social Trust proof
+        const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
         
-        // Retrurn all details
+        // Counting total count of proofs
+        const proofsQty = _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialProved]).length;
+
+        // Retrieve the subsidiaries (if exists)
+        let subsidiaries = await getSubsidiaries(orgidContract, orgid);
+
+        // Retrurn all the organization details
         return {
             orgid,
             owner,
@@ -579,20 +313,22 @@ module.exports = function (config, cached) {
             name,
             logo,
             country,
-            proofsQty: _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialProved]).length,
+            proofsQty,
             isLifProved,
             isWebsiteProved,
             isSslProved,
             isSocialFBProved,
             isSocialTWProved,
             isSocialIGProved,
-            //isJsonValid,
-            //orgJsonHash,
-            //orgJsonUri,
             jsonContent,
             jsonCheckedAt: new Date().toJSON(),
             jsonUpdatedAt: new Date().toJSON()
         };
+    };
+
+    // Retrieve ALL organizations
+    const getOrganizationsList = () => {
+        return orgidContract.methods.getOrganizations().call();
     };
 
     const scrapeOrganizations = async () => {
@@ -628,134 +364,8 @@ module.exports = function (config, cached) {
         }
     };
 
-    const resolveOrgidEvent = async (event) => {
-        log.debug("=================== :EVENT: ===================");
-
-        try {
-            //await waitForBlockNumber(event.blockNumber);// ??? ask about related use-case
-            const currentBlockNumber = await getCurrentBlockNumber();
-            await cached.saveBlockNumber(String(currentBlockNumber));
-
-            log.debug(event.event ? event.event : event.raw, event.returnValues);
-            
-            let organization, subOrganization;
-
-            switch (event.event) {
-                case "OrganizationCreated":
-                case "OrganizationOwnershipTransferred":
-                case "OrgJsonUriChanged":
-                case "OrgJsonHashChanged":
-                case "LifDepositAdded":     // event LifDepositAdded    (bytes32 indexed orgId, address indexed sender, uint256 value);
-                case "WithdrawalRequested": // event WithdrawalRequested(bytes32 indexed orgId, address indexed sender, uint256 value, uint256 withdrawTime);
-                case "DepositWithdrawn":    // event DepositWithdrawn   (bytes32 indexed orgId, address indexed sender, uint256 value);
-                    organization = await parseOrganization(event.returnValues.orgId);
-                    
-                    log.info(JSON.stringify(organization));
-                    
-                    await cached.upsertOrgid(organization);
-                    break;
-                
-                // Event fired when a subsidary is created
-                case "SubsidiaryCreated":
-                    parentOrganization = await parseOrganization(event.returnValues.parentOrgId);
-                    subOrganization = await parseOrganization(event.returnValues.subOrgId);
-                    await cached.upsertOrgid(parentOrganization);
-                    await cached.upsertOrgid(subOrganization);
-                    
-                    log.info(JSON.stringify(parentOrganization));
-                    log.info(JSON.stringify(subOrganization));
-                    
-                    break;
-                
-                case "WithdrawDelayChanged":
-                    break;
-
-                default :
-                    log.debug(`this event do not have any reaction behavior`);
-            }
-        } catch (e) {
-            log.error('Error during resolve event', e);
-        }
-    };
-
-    // Retrieve past events (for restart/recovery)
-    // const recoverPastEvents = currentBlockNumber => new Promise((resolve, reject) => {
-    //     const orgidContract = getOrgidContract();
-
-    //     // Get the last events
-    //     orgidContract
-    //         .getPastEvents('allEvents', {
-    //             fromBlock: currentBlockNumber - 500,
-    //             toBlock: currentBlockNumber - 1
-    //         })
-            
-    //         // Process the past events
-    //         .then(events => {
-    //             let remaining = events.length;
-    //             events.forEach(event => {
-    //                 resolveOrgidEvent(event)
-    //                     .then(()=>{
-    //                         remaining--;
-
-    //                         if (remaining == 0) {
-    //                             resolve();
-    //                         }
-    //                     })
-    //                     .catch(reject);
-    //             });
-    //         })
-    //         .catch(reject);
-    // });
-
-    const listenEvents = async () => {
-
-        try {
-            const orgidContract = getOrgidContract();
-            const lastKnownBlockNumber = await cached.getBlockNumber();
-
-            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address:  ${orgidContract.options.address}`)}`);
-            
-            // Start Listening on all Events
-            orgidContract.events
-                .allEvents({ 
-                    fromBlock: lastKnownBlockNumber
-                })
-
-                // Connection established
-                .on('connected', (subscriptionId) => {
-                    log.debug(`Connected with ${subscriptionId}`);
-                })
-
-                // Event Received
-                .on('data', resolveOrgidEvent)
-
-                // Change event
-                .on('changed', (event) => log.debug("=================== Changed ===================\r\n", event))
-
-                // Error Event
-                .on('error', (error) => log.debug("=================== ERROR ===================\r\n", error));
-            
-            log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);
-
-            isSubscribed = true;
-        } catch (e) {
-            log.error('Error during listenEvents', e.toString());
-        }
-    };
-
     return Promise.resolve({
         scrapeOrganizations,
-        listenEvents,
-
-        visibleForTests: {
-            getEnvironment,
-            getOrgidContract,
-            // getLifDepositContract,
-            // getLifTokenContract,
-            getOrganizationsList,
-            getOrganization,
-            getSubsidiaries,
-            parseOrganization,
-        }
+        listenEvents
     });
 };

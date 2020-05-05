@@ -85,6 +85,8 @@ class ConnectionGuard {
                 } else if (!allowedStates.includes(connection.readyState)) {
                     this.requestConnection('disconnection detected');
                 }
+
+                
             } catch (error) {
                 this.requestConnection(error.message);
             }

@@ -36,7 +36,9 @@
     "web3": "1.2.6",
     "winston": "3.2.1",
     "yamljs": "0.3.0",
-    "zos-lib": "2.4.3"
+    "zos-lib": "2.4.3",
+    "@truffle/debug-utils": "4.1.1",
+    "@windingtree/org.id-resolver": "0.4.0"
   },
   "devDependencies": {
     "jest": "25.5.1",
