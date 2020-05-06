@@ -14,32 +14,33 @@ const connectionGuard = require('./guard');
 const log = require('log4js').getLogger('smart_contracts_connector');
 log.level = 'debug';
 
-// // SMART CONTRACTS
-// const lib = require('zos-lib');
-// const Contracts = lib.Contracts;
-// const OrgId = Contracts.getFromNodeModules('@windingtree/org.id', 'OrgId');
-
 // Constants
 const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 module.exports = (config, cached) => {
     const { currentEnvironment, environments } = config();
-    const environment = environments[currentEnvironment];
-    
+    const environment = environments[currentEnvironment]; 
+
+    let web3;
+    let orgIdResolver;
+    let orgidContract;
+    let eventsSubscription;
+
     // Start connection for events listener with guard
     connectionGuard(
         `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`,
         // Diconnection handler
         () => {},
         // Connection handler
-        async web3 => {
+        async _web3 => {
             try {
-                const orgIdResolver = createResolver(
+                web3 = _web3;
+                orgIdResolver = createResolver(
                     web3,
                     environment.orgidAddress
                 );
                 orgidContract = await orgIdResolver.getOrgIdContract();
-                listenEvents(web3, orgidContract.contract, orgIdResolver);
+                eventsSubscription = listenEvents(web3, orgidContract, orgIdResolver);
             } catch (error) {
                 log.error('Before subscribe:', error)
             }
@@ -51,12 +52,11 @@ module.exports = (config, cached) => {
 
         try {
             const lastKnownBlockNumber = await cached.getBlockNumber();
+            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address: ${orgidContract}`)}`);
 
-            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address: ${orgidContract.address}`)}`);
-
-            orgidContract.events
+            const subscription = orgidContract.events
                 .allEvents({ 
-                    fromBlock: lastKnownBlockNumber - 900
+                    fromBlock: lastKnownBlockNumber - 10
                 })
 
                 // Connection established
@@ -82,6 +82,8 @@ module.exports = (config, cached) => {
                 .on('error', error => log.debug("=================== ERROR ===================\r\n", error));
             
             log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);            
+            
+            return subscription;
         } catch (error) {
             log.error('Error during listenEvents', error.toString());
         }
@@ -200,9 +202,14 @@ module.exports = (config, cached) => {
 
         if (parentEntity !== orgid0x) {
             try {
-                parent = await parseOrganization(web3, orgidContract, parentEntity);
+                parent = await parseOrganization(
+                    web3,
+                    orgidContract,
+                    parentEntity,
+                    orgIdResolver
+                );
             } catch (error) {
-                log.error('Unable to resolve parent organization', error.toString());
+                log.error('Unable to resolve parent organization', error);
             }
         }
 
@@ -284,7 +291,7 @@ module.exports = (config, cached) => {
         const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
 
         // Web-site Trust clue
-        // @todo Website assetion should be obtained from the trust assertion record
+        // @todo Website assertion should be obtained from the trust assertion record
         const isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', contact.website);
 
         // SSL Trust clue
@@ -336,11 +343,16 @@ module.exports = (config, cached) => {
 
         log.info('Scrape organizations:', organizations);
 
-        for (let orgid of organizations) {
+        for (const orgid of organizations) {
 
             let organization = {};
             try {
-                organization = await parseOrganization(orgid);
+                organization = await parseOrganization(
+                    web3,
+                    orgidContract,
+                    orgid,
+                    orgIdResolver
+                );
                 
                 log.debug(organization);
 
@@ -354,7 +366,12 @@ module.exports = (config, cached) => {
                 
                 for (let orgid of organization.subsidiaries) {
                     try {
-                        let subOrganization = await parseOrganization(orgid);
+                        let subOrganization = await parseOrganization(
+                            web3,
+                            orgidContract,
+                            orgid,
+                            orgIdResolver
+                        );
                         await cached.upsertOrgid(subOrganization);
                     } catch (e) {
                         log.warn('Error during [SubOrg] parseOrganization / upsertOrgid', e.toString());

@@ -33,12 +33,12 @@
     "sequelize": "5.21.7",
     "swagger-ui-express": "4.1.4",
     "url": "0.11.0",
-    "web3": "1.2.6",
+    "web3": "1.2.7",
     "winston": "3.2.1",
     "yamljs": "0.3.0",
     "zos-lib": "2.4.3",
     "@truffle/debug-utils": "4.1.1",
-    "@windingtree/org.id-resolver": "0.4.0"
+    "@windingtree/org.id-resolver": "0.4.2"
   },
   "devDependencies": {
     "jest": "25.5.1",
