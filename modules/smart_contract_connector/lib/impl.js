@@ -62,7 +62,7 @@ module.exports = (config, cached) => {
 
                 // Connection established
                 .on('connected', subscriptionId => {
-                    log.debug(`Connected with ${subscriptionId}`);
+                    log.debug(`Subscription Id: ${subscriptionId}`);
                 })
 
                 // Event Received

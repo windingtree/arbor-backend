@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const url = require('url');
 const qs = require('qs');
-const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
+const log = require('log4js').getLogger('rest:server');
 log.level = 'trace';
 const express = require('express');
 var app = require('express')();

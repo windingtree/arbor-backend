@@ -3,7 +3,7 @@ const chalk = require('chalk');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const { ne } = Op;
-const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop()); // eslint-disable-line
+const log = require('log4js').getLogger('models'); // eslint-disable-line
 log.level = 'debug';
 
 module.exports = function (config, modules_config) {

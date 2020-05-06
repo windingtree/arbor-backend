@@ -2,7 +2,7 @@ const Joi = require('@hapi/joi');
 const express = require('express');
 const router = express.Router();
 const filenameSplitted = __filename.split(__filename[0]);
-const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.length - 3]}/${filenameSplitted[filenameSplitted.length - 1].replace('.js', '')}`);
+const log = require("log4js").getLogger('rest');
 log.level = 'debug';
 
 module.exports = function (rest, cached) {
