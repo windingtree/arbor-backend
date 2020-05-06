@@ -2,6 +2,7 @@ const Web3 = require('web3');
 const _ = require('lodash');
 const chalk = require('chalk');
 const {
+    waitForBlockNumber,
     createResolver,
     getTrustAssertsion,
     getCurrentBlockNumber,
@@ -97,6 +98,8 @@ module.exports = (config, cached) => {
             const currentBlockNumber = await getCurrentBlockNumber(web3);
             
             log.debug(event.event ? event.event : event.raw, event.returnValues);
+
+            await waitForBlockNumber(web3, event.blockNumber);
             
             let organization;
             let subOrganization;

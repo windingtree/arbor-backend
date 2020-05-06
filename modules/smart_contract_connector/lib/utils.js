@@ -7,7 +7,7 @@ const setTimeoutPromise = timeout => new Promise(resolve => setTimeout(resolve, 
 module.exports.setTimeoutPromise = setTimeoutPromise;
 
 // Get current block number
-module.exports.getCurrentBlockNumber = async web3 => {
+const getCurrentBlockNumber = async web3 => {
     let counter = 0;
     let blockNumber;
 
@@ -49,6 +49,7 @@ module.exports.getCurrentBlockNumber = async web3 => {
 
     return blockNumber;
 };
+module.exports.getCurrentBlockNumber = getCurrentBlockNumber;
 
 // Wait for a specific block number
 const waitForBlockNumber = async (web3, blockNumber) => {
