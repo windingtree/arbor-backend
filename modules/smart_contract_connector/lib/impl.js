@@ -40,7 +40,7 @@ module.exports = (config, cached) => {
                     web3,
                     environment.orgidAddress
                 );
-                orgidContract = await orgIdResolver.getOrgIdContract();
+                orgidContract = (await orgIdResolver.getOrgIdContract());
                 eventsSubscription = listenEvents(web3, orgidContract, orgIdResolver);
             } catch (error) {
                 log.error('Before subscribe:', error)
@@ -53,11 +53,12 @@ module.exports = (config, cached) => {
 
         try {
             const lastKnownBlockNumber = await cached.getBlockNumber();
-            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address: ${orgidContract}`)}`);
+            log.debug(`Subscribing to events of Orgid ${chalk.grey(`at address: ${orgidContract.options.address}`)}`);
 
+            const listenBlock = lastKnownBlockNumber - 10;
             const subscription = orgidContract.events
                 .allEvents({ 
-                    fromBlock: lastKnownBlockNumber - 10
+                    fromBlock: listenBlock >= 0 ? listenBlock : 0
                 })
 
                 // Connection established
@@ -155,6 +156,13 @@ module.exports = (config, cached) => {
             await cached.saveBlockNumber(String(currentBlockNumber));
         } catch (error) {
             log.error('Error during resolve event', error);
+
+            if (error.message.match(/^Unable to resolve a DID document/)) {
+                cached.updateOrgidData(event.returnValues.orgId, {
+                    isJsonValid: false
+                })
+                .catch(e => log.error('Error during organization update', e));
+            }
         }
     };
 

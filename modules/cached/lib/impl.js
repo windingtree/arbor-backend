@@ -18,7 +18,15 @@ module.exports = function (config, models) {
             throw e.toString()
         }
 
-        return orgid
+        return orgid;
+    };
+
+    const updateOrgidData = async (orgid, data) => {
+        return await models.orgid.update(data, {
+            where: {
+                orgid
+            }
+        });
     };
 
     const getOrgId = async (address) => {
@@ -115,6 +123,7 @@ module.exports = function (config, models) {
 
     return Promise.resolve({
         upsertOrgid,
+        updateOrgidData,
         getOrgId,
         getOrgIdRaw,
         getOrgIds,

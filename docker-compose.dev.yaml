@@ -4,8 +4,6 @@ services:
 
   mysql:
     image: mysql
-    container_name: arbor_mysql
-    restart: unless-stopped
     environment:
       MYSQL_USER: arboruser
       MYSQL_PASSWORD: arborpassword

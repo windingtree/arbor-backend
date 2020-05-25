@@ -90,7 +90,7 @@ module.exports.getTrustAssertsion = (resolverResult, type, calim) => {
     }
 
     return resolverResult.trust.assertions
-        .filter(a = a.type === type && a.claim.match(new RegExp(`${calim}`, 'i')))
+        .filter(a => a.type === type && a.claim.match(new RegExp(`${calim}`, 'i')))
         .reduce(r => {
             if (r[1].verified) {
                 return true;
