@@ -12,7 +12,7 @@ const getCurrentBlockNumber = async web3 => {
     let blockNumber;
 
     const blockNumberRequest = () => new Promise(resolve => {
-        const blockNumberTimeout = setTimeout(resolve, 2000);
+        const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
 
         try {
             web3.eth.getBlockNumber((error, result) => {
@@ -26,6 +26,7 @@ const getCurrentBlockNumber = async web3 => {
             });
         } catch (error) {
             // ignore errors due because of we will be doing retries
+            resolve(null);
         }
     });
 
@@ -39,9 +40,9 @@ const getCurrentBlockNumber = async web3 => {
         }
 
         blockNumber = await blockNumberRequest();
-
+        
         if (typeof blockNumber !== 'number') {
-            await setTimeoutPromise(1000);
+            await setTimeoutPromise(1000 + 1000 * parseInt(counter / 3));
         }
 
         counter++;
@@ -147,6 +148,45 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
     }
 });
 module.exports.checkSslByUrl = checkSslByUrl;
+
+class SimpleQueue {
+    constructor () {
+        this.process = false;
+        this.current = null;
+        this.queue = [];
+    }
+
+    async step () {
+        try {
+            this.current = this.queue.shift();
+            this.process = true;
+            await this.current.action.apply(this, this.current.args);
+            this.process = false;
+            this.next();
+        } catch (error) {
+            this.process = false;
+        }
+    }
+
+    next () {
+        if (this.process || this.queue.length === 0) {
+            return;
+        }
+
+        if (this.queue.length > 0) {
+            this.step();
+        }
+    }
+
+    add (action, args) {
+        this.queue.push({
+            action,
+            args
+        });
+        this.next();
+    }
+}
+module.exports.SimpleQueue = SimpleQueue;
 
 // // Get the Organizations in DNS for the DNS Trust Clue
 // const getOrgidFromDns = async (link) => new Promise((resolve) => {

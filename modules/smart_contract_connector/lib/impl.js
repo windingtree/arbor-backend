@@ -6,7 +6,8 @@ const {
     createResolver,
     getTrustAssertsion,
     getCurrentBlockNumber,
-    checkSslByUrl
+    checkSslByUrl,
+    SimpleQueue
 } = require('./utils');
 
 // Web3 Connection Guard
@@ -48,6 +49,9 @@ module.exports = (config, cached) => {
         }
     );
     
+    // Queue for promises
+    const queue = new SimpleQueue();
+    
     // Start Listening on all OrgId contract Events
     const listenEvents = async (web3, orgidContract, orgIdResolver) => {
 
@@ -69,11 +73,14 @@ module.exports = (config, cached) => {
                 // Event Received
                 .on(
                     'data',
-                    event => resolveOrgidEvent(
-                        web3,
-                        orgidContract,
-                        orgIdResolver,
-                        event
+                    event => queue.add(
+                        resolveOrgidEvent,
+                        [
+                            web3,
+                            orgidContract,
+                            orgIdResolver,
+                            event
+                        ]
                     )
                 )
 
@@ -113,6 +120,7 @@ module.exports = (config, cached) => {
                 case "LifDepositAdded": 
                 case "WithdrawalRequested":
                 case "DepositWithdrawn":
+
                     organization = await parseOrganization(
                         web3,
                         orgidContract,
@@ -339,6 +347,8 @@ module.exports = (config, cached) => {
             isSocialTWProved,
             isSocialIGProved,
             jsonContent,
+            orgJsonHash: resolverResult.organization.orgJsonHash,
+            orgJsonUri: resolverResult.organization.orgJsonUri,
             jsonCheckedAt: new Date().toJSON(),
             jsonUpdatedAt: new Date().toJSON()
         };
