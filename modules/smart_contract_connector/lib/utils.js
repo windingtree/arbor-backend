@@ -84,21 +84,15 @@ module.exports.createResolver = (web3, orgIdAddress) => {
 };
 
 // Extract assertion from orgid-resolver result
-module.exports.getTrustAssertsion = (resolverResult, type, calim) => {
+module.exports.getTrustAssertsion = (resolverResult, type, claim) => {
 
     if (!resolverResult.trust || !resolverResult.trust.assertions) {
         return false;
     }
 
     return resolverResult.trust.assertions
-        .filter(a => a.type === type && a.claim.match(new RegExp(`${calim}`, 'i')))
-        .reduce(r => {
-            if (r[1].verified) {
-                return true;
-            }
-
-            return false;
-        }, false);
+        .filter(a => a.type === type && a.claim.match(new RegExp(`${claim}`, 'i')))
+        .reduce((a, v) => v.verified ? true : false, false);
 };
 
 const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) => {
