@@ -346,6 +346,7 @@ module.exports = (config, cached) => {
             isSocialFBProved,
             isSocialTWProved,
             isSocialIGProved,
+            isSocialLNProved,
             jsonContent,
             orgJsonHash: resolverResult.organization.orgJsonHash,
             orgJsonUri: resolverResult.organization.orgJsonUri,
