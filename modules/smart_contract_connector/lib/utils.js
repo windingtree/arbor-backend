@@ -92,7 +92,7 @@ module.exports.getTrustAssertsion = (resolverResult, type, claim) => {
 
     return resolverResult.trust.assertions
         .filter(a => a.type === type && a.claim.match(new RegExp(`${claim}`, 'i')))
-        .reduce((a, v) => v.verified ? true : false, false);
+        .reduce((a, v) => v && v.verified ? true : false, false);
 };
 
 const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) => {
