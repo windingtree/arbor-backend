@@ -302,7 +302,7 @@ module.exports = (config, cached) => {
 
         // Instagram Trust clue
         const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 'instagram');
-        console.log({ isSocialIGProved })
+        console.log(JSON.stringify({ resolverResult, isSocialIGProved }, null, 2))
 
         // Linkedin Trust clue
         const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
