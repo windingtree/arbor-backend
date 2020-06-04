@@ -35,7 +35,10 @@
     },
     "smart_contract_connector": {
       "module": "./modules/smart_contract_connector",
-      "dependencies": ["config", "cached"]
+      "dependencies": ["config", "cached"],
+      "parameters": {
+        "rest": true
+      }
     }
   }
 }

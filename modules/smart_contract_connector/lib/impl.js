@@ -290,9 +290,6 @@ module.exports = (config, cached) => {
             logo = jsonContent.media.logo;
         }
 
-        // Retrieve contacts
-        let contact = _.get(jsonContent, `${orgidType}.contacts[0]`, {});
-
         // Check the LIF deposit amount
         let lifDeposit = web3.utils.fromWei(deposit, 'ether');
         let isLifProved = lifDeposit >= environment.lifMinimumDeposit;
@@ -310,11 +307,32 @@ module.exports = (config, cached) => {
         const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
 
         // Web-site Trust clue
-        // @todo Website assertion should be obtained from the trust assertion record
-        const isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', contact.website);
+        let website;
+        let isWebsiteProved = false
+        let isSslProved = false;
 
-        // SSL Trust clue
-        const isSslProved = isWebsiteProved ? checkSslByUrl(website) : false;
+        try {
+            website = resolverResult.trust && resolverResult.trust.assertions
+                ? resolverResult.trust.assertions.reduce(
+                    (a, v) => {
+                        if (v.type === 'domain') {
+                            a = new URL(v.proof).hostname;
+                        }
+                        return a;
+                    },
+                    ''
+                )
+                : null;
+            
+            isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', '');
+            
+            // SSL Trust clue
+            isSslProved = website && isWebsiteProved
+                ? await checkSslByUrl(website, name)
+                : false;
+        } catch (error) {
+            log.error(error);
+        }
 
         // Overall Social Trust proof
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
@@ -353,6 +371,17 @@ module.exports = (config, cached) => {
             jsonCheckedAt: new Date().toJSON(),
             jsonUpdatedAt: new Date().toJSON()
         };
+    };
+
+    const refreshOrganization = async (web3, orgidContract, address, orgIdResolver) => {
+        const organization = await parseOrganization(
+            web3,
+            orgidContract,
+            address,
+            orgIdResolver
+        );
+        // console.log(JSON.stringify(organization, null, 2));
+        await cached.upsertOrgid(organization);
     };
 
     // Retrieve ALL organizations
@@ -405,6 +434,13 @@ module.exports = (config, cached) => {
 
     return Promise.resolve({
         scrapeOrganizations,
-        listenEvents
+        listenEvents,
+        refreshOrganization: async (address) => refreshOrganization(
+            web3,
+            orgidContract,
+            address,
+            orgIdResolver
+        ),
+        cached
     });
 };

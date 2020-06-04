@@ -1,3 +1,4 @@
+const https = require('https');
 const { OrgIdResolver, httpFetchMethod } = require('@windingtree/org.id-resolver');
 // const dns = require('dns');
 const log = require('log4js').getLogger('smart_contracts_connector:utils');
@@ -106,32 +107,24 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
     try {
         let { hostname } = new URL(link);
         let isAuthorized = false;
+        
         const options = {
             host: hostname,
             method: 'get',
             path: '/',
             agent: new https.Agent({ maxCachedSessions: 0 }) 
         };
-        let companySiteHostnameFromServer;
+        
         let legalNameFromServer;
+
         requestSsl = https.request(options, (response) => {
             let subject = response.socket.getPeerCertificate().subject;
-            let CN = subject.CN.replace('*.','');
-
-            if (CN.indexOf('://') === -1) {
-                CN = `https://${CN}`;
-            }
-
-            companySiteHostnameFromServer = new URL(CN).hostname;
             legalNameFromServer = subject.O;
-
-            log.debug(companySiteHostnameFromServer, legalNameFromServer);
-
             isAuthorized = response.socket.authorized;
+
             resolve(
                 isAuthorized &&
-                (legalNameFromServer === expectedLegalName) &&
-                (companySiteHostnameFromServer === hostname)
+                legalNameFromServer.includes(expectedLegalName)
             )
         });
         requestSsl.end();

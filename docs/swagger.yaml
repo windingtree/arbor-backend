@@ -88,6 +88,26 @@ paths:
             $ref: '#/definitions/OrgIdRow'
         400:
           description: bad input parameter
+  /orgids/{address}/refresh:
+    post:
+      summary: searches orgid and refresh it
+      operationId: searchOrgId
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: address
+          description: ethereum address of organisation
+          required: true
+          type: string
+      responses:
+        200:
+          description: search results matching criteria
+          schema:
+            $ref: '#/definitions/OrgIdRow'
+        400:
+          description: bad input parameter
+                  
   /segments:
     get:
       summary: return all segments

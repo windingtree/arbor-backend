@@ -14,10 +14,11 @@ module.exports = function (rest, cached) {
     };
 
     router.get('/orgids/:address', async (req, res) => {
-        const {address} = req.params;
-        const self = req.protocol + '://' + req.get('host') + req.originalUrl;
+        const { address } = req.params;
+
         try {
             const orgId = await cached.getOrgId(address);
+            const self = req.protocol + '://' + req.get('host') + req.originalUrl;
             const json = {
                 links: {
                     self,
@@ -27,10 +28,10 @@ module.exports = function (rest, cached) {
                     ...orgId
                 }
             };
-            res.status(200).send(json)
+            res.status(200).send(json);            
         } catch (e) {
             const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+            res.status(code).send(json);
         }
     });
 
