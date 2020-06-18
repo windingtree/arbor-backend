@@ -27,12 +27,17 @@ module.exports = (config, cached) => {
     let orgIdResolver;
     let orgidContract;
     let eventsSubscription;
+    let isConnected = false;
+    let isReconnection = false;
 
     // Start connection for events listener with guard
     connectionGuard(
         `wss://${environment.network}.infura.io/ws/v3/${environment.infuraId}`,
         // Diconnection handler
-        () => {},
+        () => {
+            isConnected = false;
+            isReconnection = true;
+        },
         // Connection handler
         async _web3 => {
             try {
@@ -43,7 +48,10 @@ module.exports = (config, cached) => {
                 );
                 orgidContract = (await orgIdResolver.getOrgIdContract());
                 eventsSubscription = listenEvents(web3, orgidContract, orgIdResolver);
+                isConnected = true;
+                isReconnection = false;
             } catch (error) {
+                isConnected = false;
                 log.error('Before subscribe:', error)
             }
         }
@@ -434,6 +442,8 @@ module.exports = (config, cached) => {
     };
 
     return Promise.resolve({
+        isConnected: () => isConnected,
+        isReconnection: () => isReconnection,
         scrapeOrganizations,
         listenEvents,
         refreshOrganization: async (address) => refreshOrganization(

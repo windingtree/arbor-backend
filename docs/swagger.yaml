@@ -17,24 +17,21 @@ tags:
     description: example calls
 
 paths:
-  /stats:
+  /stats/connection:
     get:
       summary: get Arbor stats
       responses:
         200:
-          description: search results matching criteria
+          description: Arbor stats
           schema:
             type: object
             properties:
-              org_ids_tqy:
-                type: number
-                example: 100
-              sections_qty:
-                type: number
-                example: 5
-              dao_qty:
-                type: number
-                example: 0
+              connected:
+                type: boolean
+                example: true
+              reconnection:
+                type: boolean
+                example: false
   /orgids:
     get:
       summary: searches orgids

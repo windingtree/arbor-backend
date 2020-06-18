@@ -6,6 +6,19 @@ const log = require("log4js").getLogger('rest');
 log.level = 'debug';
 
 module.exports = function (rest, controller) {
+
+    router.get('/stats/connection', async (req, res) => {
+        try {
+            const json = {
+                connected: controller.isConnected(),
+                reconnection: controller.isReconnection()
+            };
+            res.status(200).send(json); 
+        } catch (e) {
+            const {code, json} = rest.decorateError(e);
+            res.status(code).send(json);
+        }
+    });
     
     router.post('/orgids/:address/refresh', async (req, res) => {
         const { address } = req.params;
