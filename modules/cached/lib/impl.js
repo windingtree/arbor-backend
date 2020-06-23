@@ -6,6 +6,9 @@ const log = require('log4js').getLogger('cached');
 log.level = 'debug';
 
 module.exports = function (config, models) {
+    const { currentEnvironment, environments } = config();
+    const environment = environments[currentEnvironment];
+
     const upsertOrgid = async (organizationPayload) => {
         log.debug('[.]', chalk.blue('upsertOrgid') , JSON.stringify(organizationPayload));
         let orgid;
@@ -121,6 +124,31 @@ module.exports = function (config, models) {
         return segments
     };
 
+    const saveProfileDraft = async (json) => {
+        const draft = await models.drafts.create({ json });
+        return draft.profileId;
+    };
+
+    const updateProfileDraft = async (profileId, json) => {
+        const draft = await models.drafts.findOne({ where: { profileId } });
+        if (!draft) {
+            const err = new Error('Profile not found');
+            err.code = 404;
+            throw  err;
+        }
+        return await draft.update({ json });
+    };
+
+    const getProfileDraft = async profileId => {
+        const draft = await models.drafts.findOne({ where: { profileId } });
+        if (!draft) {
+            const err = new Error('Profile not found');
+            err.code = 404;
+            throw  err;
+        }
+        return draft.json
+    };
+
     return Promise.resolve({
         upsertOrgid,
         updateOrgidData,
@@ -129,6 +157,10 @@ module.exports = function (config, models) {
         getOrgIds,
         getSegments,
         saveBlockNumber,
-        getBlockNumber
+        getBlockNumber,
+        saveProfileDraft,
+        updateProfileDraft,
+        getProfileDraft,
+        environment: () => environment
     });
 };

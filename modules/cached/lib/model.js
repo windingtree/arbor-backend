@@ -139,6 +139,36 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
+    
+    // Drafts table
+    const drafts = sequelize.define('drafts',
+        {
+            profileId: {
+                primaryKey: true,
+                type: Sequelize.STRING(9),
+                defaultValue: () => Math.random().toString(36).substr(2, 9)
+            },
+            json: {
+                type: Sequelize.TEXT,
+                get() {
+                    if (this.getDataValue('json')) {
+                        return JSON.parse(this.getDataValue('json'));
+                    }
+                    return null;
+                },
+                set(value) {
+                    if (typeof value === 'object') {
+                        this.setDataValue('json', JSON.stringify(value));
+                    } else {
+                        this.setDataValue('json', null);
+                    }
+                }
+            }
+        },
+        {
+            timestamps: true,
+        }
+    );
 
-    return [orgid, stats];
+    return [orgid, stats, drafts];
 };

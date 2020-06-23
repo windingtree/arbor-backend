@@ -17,6 +17,33 @@ tags:
     description: example calls
 
 paths:
+  /drafts:
+    post:
+      summary: Save Profile Draft
+      requestBody:
+        description: Profile Draft Object
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/ProfileDraft'
+      responses:
+          200:
+            description: Id of the saver Profile Draft
+            schema:
+              type: object
+              properties:
+                profileId:
+                  type: string
+                  example: 'sy7g34cul'
+  /drafts/{profileId}:
+    get:
+      summary: get saved profile draft by id
+      responses:
+        200:
+          description: Profile object
+          schema:
+            $ref: '#/definitions/ProfileDraft'
+              
   /stats/connection:
     get:
       summary: get Arbor stats
@@ -203,6 +230,43 @@ definitions:
       name:
         type: string
         example: Hotels
+  ProfileDraft:
+    type: object
+    properties:
+      legalName:
+        type: string
+        example: Maison Albar Hotels Le Diamond
+      legalEntityType:
+        type: string
+        example: Limited liability company
+      country:
+        type: string
+        example: France
+      state:
+        type: string
+        example: Burgundy
+      city:
+        type: string
+        example: Paris
+      sreet:
+        type: string
+        example: rue de la Pépinière
+      building:
+        type: string
+        example: 8th arr.
+      apartment:
+        type: string
+        example: 99
+      postalCode:
+        type: string
+        example: 75008
+      website: 
+        type: string
+        example: https://maisonalbar.com
+      email:
+        type: string
+        format: email
+        example: maisonalbar@gmail.com
 # Added by API Auto Mocking Plugin
 basePath: /docs/
 schemes:

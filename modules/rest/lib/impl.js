@@ -86,22 +86,22 @@ module.exports = function (cfg) {
     };
 
     const decorateError = (e) => {
-        let code = "500";
+        let code = e.code || 500;
         let json = {
             errors: [{
-                status: '500',
-                title: 'Internal server error'
+                message: e.message || 'Internal server error',
+                code
             }]
         };
-        if (e.code && e.title) {
-            code = e.code;
-            let error = _.pick(e, ['code', 'status', 'title', 'detail', 'source']);
-            json = {
-                errors: [error]
-            };
-        } else {
-            log.error(e);
-        }
+        // if (e.code && e.title) {
+        //     code = e.code;
+        //     let error = _.pick(e, ['code', 'status', 'title', 'detail', 'source']);
+        //     json = {
+        //         errors: [error]
+        //     };
+        // } else {
+        //     log.error(e);
+        // }
         return { code, json }
     };
 
