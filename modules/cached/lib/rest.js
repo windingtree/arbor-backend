@@ -78,13 +78,13 @@ module.exports = function (rest, cached) {
 
     router.post('/drafts', async (req, res) => {
         try {
-            const profileId = await cached.saveProfileDraft(req.body);
+            const { profileId, password } = await cached.saveProfileDraft(req.body);
             const msg = {
                 to: req.body.email,
                 from: 'noreply@windingtree.com',
                 subject: 'Your Profile Draft on WindingTree marketplace',
-                text: `Your Profile Id: ${profileId}`,
-                html: `Your Profile Id: <strong>${profileId}</strong>`
+                text: `Your Profile Id: ${profileId}; password for updates: ${password}`,
+                html: `Your Profile Id: ${profileId}; password for updates: ${password}`
             };
             await sgMail.send(msg);
             res.status(200).json({
@@ -96,10 +96,21 @@ module.exports = function (rest, cached) {
         }
     });
 
-    router.put('/drafts/:profileId', async (req, res) => {
-        const { profileId } = req.params;
+    router.put('/drafts/:profileId/:password', async (req, res) => {
+        const { profileId, password } = req.params;
         try {
-            await cached.updateProfileDraft(profileId, req.body);
+            await cached.updateProfileDraft(profileId, password, req.body);
+            res.status(200).send('OK');
+        } catch (error) {
+            const {code, json} = rest.decorateError(error);
+            res.status(code).send(json);
+        }
+    });
+
+    router.delete('/drafts/:profileId', async (req, res) => {
+        const { profileId, password } = req.params;
+        try {
+            await cached.removeProfileDraft(profileId, password);
             res.status(200).send('OK');
         } catch (error) {
             const {code, json} = rest.decorateError(error);

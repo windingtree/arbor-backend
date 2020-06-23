@@ -126,17 +126,24 @@ module.exports = function (config, models) {
 
     const saveProfileDraft = async (json) => {
         const draft = await models.drafts.create({ json });
-        return draft.profileId;
+        return {
+            profileId: draft.profileId,
+            password: draft.password
+        };
     };
 
-    const updateProfileDraft = async (profileId, json) => {
-        const draft = await models.drafts.findOne({ where: { profileId } });
+    const updateProfileDraft = async (profileId, password, json) => {
+        const draft = await models.drafts.findOne({ where: { profileId, password } });
         if (!draft) {
             const err = new Error('Profile not found');
             err.code = 404;
             throw  err;
         }
         return await draft.update({ json });
+    };
+
+    const removeProfileDraft = async (profileId, password) => {
+        await models.drafts.destroy({ where: { profileId, password } });
     };
 
     const getProfileDraft = async profileId => {
@@ -160,6 +167,7 @@ module.exports = function (config, models) {
         getBlockNumber,
         saveProfileDraft,
         updateProfileDraft,
+        removeProfileDraft,
         getProfileDraft,
         environment: () => environment
     });

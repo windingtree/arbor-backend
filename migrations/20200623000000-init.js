@@ -136,6 +136,10 @@ module.exports = {
                         type: Sequelize.STRING(9),
                         defaultValue: () => Math.random().toString(36).substr(2, 9)
                     },
+                    password: {
+                        type: Sequelize.STRING(9),
+                        defaultValue: () => Math.random().toString(36).substr(2, 9)
+                    },
                     json: {
                         type: Sequelize.TEXT,
                         get() {

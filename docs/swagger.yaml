@@ -37,7 +37,7 @@ paths:
                   profileId:
                     type: string
                     example: sy7g34cul
-  /drafts/{profileId}:
+  /drafts/{profileId}/{password}:
     put:
       summary: update saved profile draft by id
       requestBody:
@@ -56,6 +56,12 @@ paths:
           description: Profile object
           schema:
             $ref: '#/definitions/ProfileDraft'
+    delete:
+      summary: remove saved profile draft by id
+      responses:
+        responses:
+          '200':
+            description: OK
               
   /stats/connection:
     get:
