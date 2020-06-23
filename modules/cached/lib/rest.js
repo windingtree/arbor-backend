@@ -107,7 +107,7 @@ module.exports = function (rest, cached) {
         }
     });
 
-    router.delete('/drafts/:profileId', async (req, res) => {
+    router.delete('/drafts/:profileId/:password', async (req, res) => {
         const { profileId, password } = req.params;
         try {
             await cached.removeProfileDraft(profileId, password);
