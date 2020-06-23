@@ -27,15 +27,28 @@ paths:
             schema:
               $ref: '#/definitions/ProfileDraft'
       responses:
-          200:
-            description: Id of the saver Profile Draft
-            schema:
-              type: object
-              properties:
-                profileId:
-                  type: string
-                  example: 'sy7g34cul'
+        200:
+          description: Id of the saver Profile Draft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profileId:
+                    type: string
+                    example: sy7g34cul
   /drafts/{profileId}:
+    put:
+      summary: update saved profile draft by id
+      requestBody:
+        description: Profile Draft Object
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/ProfileDraft'
+      responses:
+        '200':
+          description: OK
     get:
       summary: get saved profile draft by id
       responses:
