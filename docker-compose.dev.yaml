@@ -7,7 +7,7 @@ services:
     environment:
       MYSQL_USER: arboruser
       MYSQL_PASSWORD: arborpassword
-      MYSQL_DATABASE: arbordb
+      MYSQL_DATABASE: arbordbnew
       MYSQL_ROOT_PASSWORD: root
       MYSQL_TCP_PORT: 3306
     ports:

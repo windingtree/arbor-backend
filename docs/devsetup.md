@@ -7,7 +7,7 @@
 Install dependencies 
 
 ```
-yarn install
+npm install
 ```
 
 ## Copy configuration files
@@ -124,3 +124,13 @@ Server will be available at http://localhost:3333
 ## API root
 
 `http://localhost:3333/api/v1/`
+
+## Create new database
+
+```
+mysql -u root -p
+CREATE DATABASE newdb
+USE newdb
+GRANT ALL privileges on newdb.* to arboruser;
+FLUSH PRIVILEGES;
+```

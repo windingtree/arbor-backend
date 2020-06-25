@@ -30,19 +30,3 @@ docker-compose up -d
 ```
 docker-compose down
 ```
-
-### Deploy to K8S
-
-- add gruntwork helm repo to your library 
-
-```
-helm repo add gruntwork https://helmcharts.gruntwork.io
-```
-
-- Run the deployment
-
-```
-helm upgrade --install -f values.default.yaml --value containerImage.tag=latest arbor-backend gruntwork/k8s-service
-```
-
-### Manage helm-secrets (optional)

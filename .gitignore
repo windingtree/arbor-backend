@@ -1,4 +1,3 @@
-package-lock.json
 .DS_Store
 .idea/
 node_modules/
@@ -26,4 +25,3 @@ docker-compose-resolved.yaml
 !*.secret
 .gitsecret/envs/develop
 .gitsecret/envs/master
-yarn.lock
