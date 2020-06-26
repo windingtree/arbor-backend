@@ -83,8 +83,10 @@ module.exports = function (rest, cached) {
                 to: req.body.email,
                 from: 'noreply@windingtree.com',
                 subject: 'Your Profile Draft on WindingTree marketplace',
-                text: `Your Profile Id: ${profileId}; password for updates: ${password}`,
-                html: `Your Profile Id: ${profileId}; password for updates: ${password}`
+                text: `Your Profile Id: ${profileId}; password for updates: ${password}\n
+                    Please follow the link to create an ORGiD: https://staging.arbor.fm/my-organizations?profileId=${profileId}`,
+                html: `Your Profile Id: ${profileId}; password for updates: ${password}\n
+                    Please follow the link to create an ORGiD: https://staging.arbor.fm/my-organizations?profileId=${profileId}`
             };
             await sgMail.send(msg);
             res.status(200).json({
