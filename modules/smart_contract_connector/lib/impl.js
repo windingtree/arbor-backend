@@ -122,12 +122,9 @@ module.exports = (config, cached) => {
 
             switch (event.event) {
                 case "OrganizationCreated":
+                case "OrganizationActiveStateChanged":
                 case "OrganizationOwnershipTransferred":
-                case "OrgJsonUriChanged":
-                case "OrgJsonHashChanged":
-                case "LifDepositAdded": 
-                case "WithdrawalRequested":
-                case "DepositWithdrawn":
+                case "OrgJsonChanged":
 
                     organization = await parseOrganization(
                         web3,
@@ -140,8 +137,10 @@ module.exports = (config, cached) => {
                     log.info('Parsed organization:', JSON.stringify(organization));
                     break;
                 
-                // Event fired when a subsidary is created
-                case "SubsidiaryCreated":
+                // Event fired when a Unit is created/changed
+                case "DirectorshipAccepted":
+                case "DirectorshipTransferred":
+                case "UnitCreated":
                     parentOrganization = await parseOrganization(
                         web3,
                         orgidContract,
@@ -161,9 +160,6 @@ module.exports = (config, cached) => {
                     log.info(JSON.stringify(subOrganization));
                     break;
                 
-                case "WithdrawDelayChanged":
-                    break;
-
                 default:
                     log.debug(`this event do not have any reaction behavior`);
             }
@@ -182,10 +178,10 @@ module.exports = (config, cached) => {
         }
     };
 
-    // Get the subsidaries of an orgid
-    const getSubsidiaries = (orgidContract, orgid) => {
+    // Get the Units of an orgid
+    const getUnits = (orgidContract, orgid) => {
         return orgidContract.methods
-            .getSubsidiaries(orgid)
+            .getUnits(orgid, false)
             .call();
     };
 
@@ -216,23 +212,24 @@ module.exports = (config, cached) => {
         log.debug(`Organization DID document: ${JSON.stringify(resolverResult.didDocument)}`);
 
         const {
+            orgJsonHash,
+            orgJsonUri,
+            parentOrgId,
             owner,
             director,
-            state,
-            directorConfirmed,
-            parentEntity,
-            deposit
+            isActive,
+            isDirectorshipAccepted
         } = resolverResult.organization;
 
         // Retrieve the parent organization (if exists)
         let parent;
 
-        if (parentEntity !== orgid0x) {
+        if (parentOrgId !== orgid0x) {
             try {
                 parent = await parseOrganization(
                     web3,
                     orgidContract,
-                    parentEntity,
+                    parentOrgId,
                     orgIdResolver
                 );
             } catch (error) {
@@ -298,10 +295,6 @@ module.exports = (config, cached) => {
             logo = jsonContent.media.logo;
         }
 
-        // Check the LIF deposit amount
-        let lifDeposit = web3.utils.fromWei(deposit, 'ether');
-        let isLifProved = lifDeposit >= environment.lifMinimumDeposit;
-
         // Facebook Trust clue
         const isSocialFBProved = getTrustAssertsion(resolverResult, 'social', 'facebook');
 
@@ -347,10 +340,10 @@ module.exports = (config, cached) => {
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
         
         // Counting total count of proofs
-        const proofsQty = _.compact([isWebsiteProved, isSslProved, isLifProved, isSocialProved]).length;
+        const proofsQty = _.compact([isWebsiteProved, isSslProved, isSocialProved]).length;
 
         // Retrieve the subsidiaries (if exists)
-        let subsidiaries = await getSubsidiaries(orgidContract, orgid);
+        let subsidiaries = await getUnits(orgidContract, orgid);
 
         // Retrurn all the organization details
         return {
@@ -361,13 +354,12 @@ module.exports = (config, cached) => {
             orgidType,
             directory,
             director,
-            state,
-            directorConfirmed,
+            state: isActive,
+            directorConfirmed: isDirectorshipAccepted,
             name,
             logo,
             country,
             proofsQty,
-            isLifProved,
             isWebsiteProved,
             isSslProved,
             isSocialFBProved,
@@ -375,8 +367,8 @@ module.exports = (config, cached) => {
             isSocialIGProved,
             isSocialLNProved,
             jsonContent,
-            orgJsonHash: resolverResult.organization.orgJsonHash,
-            orgJsonUri: resolverResult.organization.orgJsonUri,
+            orgJsonHash,
+            orgJsonUri,
             jsonCheckedAt: new Date().toJSON(),
             jsonUpdatedAt: new Date().toJSON()
         };
@@ -395,7 +387,7 @@ module.exports = (config, cached) => {
 
     // Retrieve ALL organizations
     const getOrganizationsList = () => {
-        return orgidContract.methods.getOrganizations().call();
+        return orgidContract.methods.getOrganizations(false).call();
     };
 
     const scrapeOrganizations = async () => {

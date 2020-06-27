@@ -163,14 +163,14 @@ module.exports = {
                         type: Sequelize.DATE
                     }
                 }),
-            queryInterface.addColumn(
-                'drafts',
-                'password',
-                {
-                    type: Sequelize.STRING(9),
-                    defaultValue: () => Math.random().toString(36).substr(2, 9)
-                }
-            )
+            // queryInterface.addColumn(
+            //     'drafts',
+            //     'password',
+            //     {
+            //         type: Sequelize.STRING(9),
+            //         defaultValue: () => Math.random().toString(36).substr(2, 9)
+            //     }
+            // )
         ]);
     },
 
