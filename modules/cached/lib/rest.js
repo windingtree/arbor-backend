@@ -85,7 +85,7 @@ module.exports = function (rest, cached) {
                 subject: 'Your Profile Draft on WindingTree marketplace',
                 text: `Your organization is almost created!\n\n
                     We've saved your organization and created a draft of it on the Winding Tree Marketplace.\n
-                    Now you need a desktop web browser with installed a MetaMask extension to continue creating a digital identity for your organisation.\n\n
+                    Now you need a desktop web browser with a MetaMask extension installed to continue creating a digital identity for your organization.\n\n
                     https://${environment.network === 'ropsten' ? 'staging.arbor.fm' : 'arbor.fm'}/my-organizations?profileId=${profileId}`,
                 html: `<!DOCTYPE html
                 PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -96,6 +96,7 @@ module.exports = function (rest, cached) {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
                     body {
+                        font-family: Arial, Helvetica, sans-serif;
                         margin: 0;
                         padding: 0;
                         background-color: white;
@@ -123,16 +124,17 @@ module.exports = function (rest, cached) {
                         
                     }
                     h1 {
+                        font-family: Arial, Helvetica, sans-serif;
                         font-style: normal;
                         font-weight: 500;
-                        font-size: 40px;
+                        font-size: 32px;
                         line-height: 52px;
                         color: #42424F;
                     }
-                    p:first-child {
+                    .first {
                         margin-top: 52px;
                     }
-                    p:last-child {
+                    .last {
                         margin-bottom: 52px;
                     }
                     .button {
@@ -146,7 +148,7 @@ module.exports = function (rest, cached) {
                         height: 44px;
                         left: 80px;
                         top: 509px;
-                        font-family: Raleway;
+                        font-family: Arial, Helvetica, sans-serif;
                         font-style: normal;
                         font-weight: 600;
                         font-size: 16px;
@@ -180,11 +182,11 @@ module.exports = function (rest, cached) {
                     <tr>
                         <td></td>
                         <td>
-                            <p>
+                            <p class="first">
                                 We've saved your organization and created a draft of it on the Winding Tree Marketplace.
                             </p>
-                            <p>
-                                Now you need a desktop web browser with installed a MetaMask extension to continue creating a digital identity for your organisation.
+                            <p class="last">
+                                Now you need a desktop web browser with a MetaMask extension installed to continue creating a digital identity for your organization.
                             </p>
                         </td>
                         <td></td>
