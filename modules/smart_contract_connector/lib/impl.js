@@ -185,19 +185,27 @@ module.exports = (config, cached) => {
             .call();
     };
 
+    const toChecksObject = checks => checks.reduce(
+        (a, { type, passed, errors = [], warnings = [] }) => {
+            a = {
+                ...a,
+                [type]: {
+                    passed,
+                    errors,
+                    warnings
+                }
+            };
+            return a;
+        },
+        {}
+    );
+
     // Parse an organization
     const parseOrganization = async (web3, orgidContract, orgid, orgIdResolver) => {
         log.debug('[.]', chalk.blue('parseOrganization'), orgid, typeof orgid);
 
         const resolverResult = await orgIdResolver.resolve(`did:orgid:${orgid}`);
 
-        // Show resolver errors
-        if (resolverResult.errors && resolverResult.errors.length > 0) {
-            resolverResult.errors.forEach(error => {
-                log.warn(error.title, JSON.stringify(error));
-            });
-        }
-        
         let jsonContent;
 
         if (resolverResult.didDocument && resolverResult.organization) {
@@ -210,6 +218,10 @@ module.exports = (config, cached) => {
 
         log.debug(`Organization Details: ${JSON.stringify(resolverResult.organization)}`);
         log.debug(`Organization DID document: ${JSON.stringify(resolverResult.didDocument)}`);
+
+        const checks = toChecksObject(resolverResult.checks);
+
+        isJsonValid = checks.DID_DOCUMENT.passed
 
         const {
             orgJsonHash,
@@ -366,6 +378,7 @@ module.exports = (config, cached) => {
             isSocialTWProved,
             isSocialIGProved,
             isSocialLNProved,
+            isJsonValid,
             jsonContent,
             orgJsonHash,
             orgJsonUri,
