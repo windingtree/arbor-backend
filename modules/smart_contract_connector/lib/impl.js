@@ -138,8 +138,6 @@ module.exports = (config, cached) => {
                     break;
                 
                 // Event fired when a Unit is created/changed
-                case "DirectorshipAccepted":
-                case "DirectorshipTransferred":
                 case "UnitCreated":
                     parentOrganization = await parseOrganization(
                         web3,
@@ -150,7 +148,7 @@ module.exports = (config, cached) => {
                     subOrganization = await parseOrganization(
                         web3,
                         orgidContract,
-                        event.returnValues.subOrgId,
+                        event.returnValues.unitOrgId,
                         orgIdResolver
                     );
                     await cached.upsertOrgid(parentOrganization);
