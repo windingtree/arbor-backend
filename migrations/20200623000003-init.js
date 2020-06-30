@@ -25,7 +25,8 @@ module.exports = {
                             type: Sequelize.STRING(42)
                         },
                         directory: {
-                            type: Sequelize.ENUM('legalEntity', 'hotel', 'airline', 'ota', 'insurance', 'unknown')
+                            type: Sequelize.STRING(42),
+                            defaultValue: 'unknown'
                         },
                         director: {
                             type: Sequelize.STRING(42),
@@ -162,15 +163,7 @@ module.exports = {
                     updatedAt: {
                         type: Sequelize.DATE
                     }
-                }),
-            // queryInterface.addColumn(
-            //     'drafts',
-            //     'password',
-            //     {
-            //         type: Sequelize.STRING(9),
-            //         defaultValue: () => Math.random().toString(36).substr(2, 9)
-            //     }
-            // )
+                })
         ]);
     },
 
