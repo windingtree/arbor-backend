@@ -86,7 +86,7 @@ module.exports = function (rest, cached) {
                 text: `Your organization is almost created!\n\n
                     We've saved your organization and created a draft of it on the Winding Tree Marketplace.\n
                     Now you need a desktop web browser with a MetaMask extension installed to continue creating a digital identity for your organization.\n\n
-                    https://${environment.network === 'ropsten' ? 'staging.arbor.fm' : 'arbor.fm'}/my-organizations?profileId=${profileId}`,
+                    https://${environment.network === 'ropsten' ? 'staging.arbor.fm' : 'marketplace.windingtree.com'}/my-organizations?profileId=${profileId}`,
                 html: `<!DOCTYPE html
                 PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
             <html xmlns="http://www.w3.org/1999/xhtml">
