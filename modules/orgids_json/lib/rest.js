@@ -18,16 +18,19 @@ const upload = multer({ dest: 'uploads/tmp/', fileFilter: fileFilter });
 
 
 module.exports = function (rest, orgids_json) {
-    const baseUrl = (req => {
-        //url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
-        return 'https://staging-api.arbor.fm/';
-    });
+    const environment = orgids_json.environment();
+    const baseUrl = environment.baseUrl;
+
+    // const baseUrl = (req => {
+    //     //url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
+    //     return 'https://staging-api.arbor.fm/';
+    // });
     
 
     router.post('/json', async (req, res) => {
         const { address, orgidJson } = req.body;
         try {
-            const uri = await orgids_json.saveJson(address, orgidJson, baseUrl(req));
+            const uri = await orgids_json.saveJson(address, orgidJson, baseUrl);
             log.debug('json saved. uri', uri);
             const json = {
                 data: {
@@ -49,7 +52,7 @@ module.exports = function (rest, orgids_json) {
 
             const { body: { address, id }, file} =  req;
 
-            const uri = await orgids_json.saveMedia('logo', { address, id, file }, baseUrl(req));
+            const uri = await orgids_json.saveMedia('logo', { address, id, file }, baseUrl);
             log.debug('json saved. uri', uri);
             const json = {
                 data: {

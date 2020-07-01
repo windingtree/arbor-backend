@@ -4,6 +4,9 @@ const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').
 log.level = 'debug';
 
 module.exports = function (config) {
+    const { currentEnvironment, environments } = config();
+    const environment = environments[currentEnvironment]; 
+
     const mkdir = async (path, options) => {
         return new Promise((resolve, reject) => {
             fs.mkdir(path, options, (err) => {
@@ -54,6 +57,7 @@ module.exports = function (config) {
 
     return Promise.resolve({
         saveJson,
-        saveMedia
+        saveMedia,
+        environment: () => environment
     });
 };
