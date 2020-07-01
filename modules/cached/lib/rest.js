@@ -79,6 +79,7 @@ module.exports = function (rest, cached) {
     router.post('/drafts', async (req, res) => {
         try {
             const { profileId, password } = await cached.saveProfileDraft(req.body);
+            const basePath = environment.network === 'ropsten' ? 'staging.arbor.fm' : 'marketplace.windingtree.com';
             const msg = {
                 to: req.body.email,
                 from: 'noreply@windingtree.com',
@@ -86,7 +87,7 @@ module.exports = function (rest, cached) {
                 text: `Your organization is almost created!\n\n
                     We've saved your organization and created a draft of it on the Winding Tree Marketplace.\n
                     Now you need a desktop web browser with a MetaMask extension installed to continue creating a digital identity for your organization.\n\n
-                    https://${environment.network === 'ropsten' ? 'staging.arbor.fm' : 'marketplace.windingtree.com'}/my-organizations?profileId=${profileId}`,
+                    https://${basePath}/my-organizations?profileId=${profileId}`,
                 html: `<!DOCTYPE html
                 PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
             <html xmlns="http://www.w3.org/1999/xhtml">
@@ -166,7 +167,7 @@ module.exports = function (rest, cached) {
                         <td class="pad">&nbsp;</td>
                         <td class="center">
                             <div class="logo">
-                                <img src="https://staging.arbor.fm/wlogo.png" />
+                                <img src="https://${basePath}/wlogo.png" />
                             </div>          
                         </td>
                         <td class="pad">&nbsp;</td>
@@ -194,7 +195,7 @@ module.exports = function (rest, cached) {
                     <tr>
                         <td></td>
                         <td>
-                            <a href="https://${environment.network === 'ropsten' ? 'staging.arbor.fm' : 'arbor.fm'}/my-organizations?profileId=${profileId}" target="_blank">
+                            <a href="https://${basePath}/my-organizations?profileId=${profileId}" target="_blank">
                                 <div class="button">
                                     Go to My Organization
                                 </div>
