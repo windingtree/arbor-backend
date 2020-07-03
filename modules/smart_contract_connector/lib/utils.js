@@ -96,7 +96,7 @@ module.exports.getTrustAssertsion = (resolverResult, type, claim) => {
         .reduce((a, v) => v && v.verified ? true : false, false);
 };
 
-const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) => {
+const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve, reject) => {
        
     if (link.indexOf('://') === -1) {
         link = `https://${link}`;
