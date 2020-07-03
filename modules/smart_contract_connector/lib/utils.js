@@ -122,10 +122,14 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
             legalNameFromServer = subject.O;
             isAuthorized = response.socket.authorized;
 
-            resolve(
-                isAuthorized &&
-                legalNameFromServer.includes(expectedLegalName)
-            )
+            if (legalNameFromServer) {
+                resolve(
+                    isAuthorized &&
+                    legalNameFromServer.includes(expectedLegalName)
+                )
+            } else {
+                reject();
+            }
         });
         requestSsl.end();
     } catch (e) {
