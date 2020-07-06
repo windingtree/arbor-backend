@@ -52,12 +52,17 @@ module.exports = function (rest, cached) {
     });
 
     router.get('/orgids', async (req, res) => {
+        req.query = typeof req.query === 'object' ? req.query : {};
+        req.query = Object.assign({}, req.query, {
+            state: req.query.state || true
+        });
         const orgidsQuerySchema = Joi.object({
             'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'name': Joi.string(),
             'owner': Joi.string().length(42), // Length of an Ethereum address with 0x prefix 
             'country': Joi.string().length(2),
+            'state': Joi.boolean(),
             'parent.orgid': Joi.string().length(66), // Length of an ORG.ID with 0x prefix 
             'sort': Joi.string(), //?sort=primary-address.street-1,-name
             ...pageSchema
