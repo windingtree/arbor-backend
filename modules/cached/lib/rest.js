@@ -56,7 +56,7 @@ module.exports = function (rest, cached) {
         req.query = Object.assign({}, req.query, {
             state: req.query.state || true
         });
-        if (req.query.all === 'true') {
+        if (req.query.all === 'true' || req.query['parent.orgid']) {
             delete req.query.state;
         }
         delete req.query.all;
