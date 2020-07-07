@@ -122,16 +122,20 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
             legalNameFromServer = subject.O;
             isAuthorized = response.socket.authorized;
 
-            resolve(
-                isAuthorized &&
-                legalNameFromServer.includes(expectedLegalName)
-            )
+            if (legalNameFromServer) {
+                resolve(
+                    isAuthorized &&
+                    legalNameFromServer.includes(expectedLegalName)
+                )
+            } else {
+                resolve(false);
+            }
         });
         requestSsl.end();
     } catch (e) {
         log.debug('checkSslByUrl [ERROR]', e.toString());
 
-        resolve(false)
+        resolve(false);
     }
 });
 module.exports.checkSslByUrl = checkSslByUrl;

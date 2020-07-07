@@ -61,7 +61,7 @@ module.exports = function (cfg) {
         next();
     });
 
-    app.use(require('morgan')('dev'));
+    //app.use(require('morgan')('dev'));
     app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
     app.use(require('body-parser').json({ limit: '50mb' }));
 

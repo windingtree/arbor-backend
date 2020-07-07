@@ -179,7 +179,7 @@ module.exports = (config, cached) => {
     // Get the Units of an orgid
     const getUnits = (orgidContract, orgid) => {
         return orgidContract.methods
-            .getUnits(orgid, false)
+            .getUnits(orgid, true)
             .call();
     };
 
@@ -259,9 +259,9 @@ module.exports = (config, cached) => {
         // Retrieve Directory
         let directory = 'unknown';
 
-        if (orgidType == 'legalEntity') {
+        if (orgidType === 'legalEntity') {
             directory = 'legalEntity';
-        } else if (orgidType == 'organizationalUnit') {
+        } else if (orgidType === 'organizationalUnit') {
             directory = jsonContent.organizationalUnit.type;
             // Directory should be an array
             // But Database expects a string
