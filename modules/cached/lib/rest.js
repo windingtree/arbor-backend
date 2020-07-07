@@ -56,6 +56,10 @@ module.exports = function (rest, cached) {
         req.query = Object.assign({}, req.query, {
             state: req.query.state || true
         });
+        if (req.query.all === 'true') {
+            delete req.query.state;
+        }
+        delete req.query.all;
         const orgidsQuerySchema = Joi.object({
             'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
             'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
