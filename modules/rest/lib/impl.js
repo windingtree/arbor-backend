@@ -13,6 +13,7 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
 const { version } = require('../../../package.json');
+const proxy = require('express-http-proxy');
 
 // const appLogger = require('../../../utils/logger');
 // const routeInitialize = require('../../../routes');
@@ -20,6 +21,8 @@ const { version } = require('../../../package.json');
 
 module.exports = function (cfg) {
     const config = cfg();
+    const { currentEnvironment, environments } = config;
+    const environment = environments[currentEnvironment]; 
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
 
@@ -66,6 +69,11 @@ module.exports = function (cfg) {
     app.use(require('body-parser').json({ limit: '50mb' }));
 
     app.use('/uploads', express.static('uploads'));
+
+    // Simard proxy
+    app.use('/simard', proxy(environment.simard, {
+        https: true
+    }));
 
     // Swagger docs.
     const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));
