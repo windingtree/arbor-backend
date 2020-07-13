@@ -336,10 +336,10 @@ module.exports = (config, cached) => {
                 )
                 : null;
             
-            isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', '');
+            isWebsiteProved = getTrustAssertsion(resolverResult, 'dns', '');
             
             // SSL Trust clue
-            isSslProved = website && isWebsiteProved
+            isSslProved = website
                 ? await checkSslByUrl(website, name)
                 : false;
         } catch (error) {
