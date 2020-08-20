@@ -21,7 +21,7 @@ const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000
 
 module.exports = (config, cached) => {
     const { currentEnvironment, environments } = config();
-    const environment = environments[currentEnvironment]; 
+    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment]; 
 
     let web3;
     let orgIdResolver;

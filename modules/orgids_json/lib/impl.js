@@ -5,7 +5,7 @@ log.level = 'debug';
 
 module.exports = function (config) {
     const { currentEnvironment, environments } = config();
-    const environment = environments[currentEnvironment]; 
+    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment];
 
     const mkdir = async (path, options) => {
         return new Promise((resolve, reject) => {

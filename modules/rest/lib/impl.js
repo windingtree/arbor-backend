@@ -22,7 +22,7 @@ const proxy = require('express-http-proxy');
 module.exports = function (cfg) {
     const config = cfg();
     const { currentEnvironment, environments } = config;
-    const environment = environments[currentEnvironment]; 
+    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment]; 
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
 
