@@ -7,7 +7,7 @@ log.level = 'debug';
 
 module.exports = function (config, models) {
     const { currentEnvironment, environments } = config();
-    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment];
+    const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 
     const upsertOrgid = async (organizationPayload) => {
         log.debug('[.]', chalk.blue('upsertOrgid') , JSON.stringify(organizationPayload));

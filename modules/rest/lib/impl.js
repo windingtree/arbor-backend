@@ -22,7 +22,7 @@ const proxy = require('express-http-proxy');
 module.exports = function (cfg) {
     const config = cfg();
     const { currentEnvironment, environments } = config;
-    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment]; 
+    const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
 
@@ -45,13 +45,13 @@ module.exports = function (cfg) {
     var server = app.listen(config.app.port, function () {
         var host = server.address().address;
         var port = server.address().port;
-        
+
         log.info("Server listening at http://%s:%s", host, port);
         logger.appStarted(config.app.port, config.app.host);
     });
 
     // app.logger = appLogger;
-    
+
     app.options('*', cors());
     app.use(cors());
     app.use((req, res, next) => {

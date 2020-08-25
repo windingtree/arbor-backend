@@ -55,7 +55,7 @@
   },
   "scripts": {
     "test": "jest",
-    "start": "NODE_ENV=development node server.js",
+    "start": "node server.js",
     "mysql": "docker-compose -f ./docker-compose.dev.yaml up"
   },
   "engines": {
