@@ -1,10 +1,10 @@
-# Development Environment Setup 
+# Development Environment Setup
 
 ## Repository
 
 `develop` is the main development branch
 
-Install dependencies 
+Install dependencies
 
 ```
 npm install
@@ -53,7 +53,7 @@ Be sure that DB section in the config file `./modules/config/lib/1st-party.json`
 
 ## MySQL setup
 
-Create `docker-compose.yaml` in the root repository folder:  
+Create `docker-compose.yaml` in the root repository folder:
 
 ```
 version: "3.4"
@@ -80,7 +80,7 @@ $ docker-compose up
 ```
 
 Try to connect to MySql using any client, for example, with `Sequeler`.
-If you will get error like: 
+If you will get error like:
 `Authentication plugin 'caching_sha2_password' cannot be loaded`
 
 Follow these instructions
@@ -104,7 +104,7 @@ ALTER USER 'arboruser' IDENTIFIED WITH mysql_native_password BY 'arborpassword';
 ## Seed database
 
 ```
-$ npx sequelize-cli db:migrate --url 'mysql:arboruser:arborpassword@localhost:3306/arbordb'
+$ npx sequelize-cli db:migrate --url 'mysql:arboruser:arborpassword@localhost:3306/arbordbnew'
 ```
 
 ## Scrap OrgId data

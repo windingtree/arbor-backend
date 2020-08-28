@@ -1,11 +1,10 @@
 const fs = require('fs');
-const {keccak256} = require('js-sha3');
-const log = require('log4js').getLogger(__filename.split('\\').pop().split('/').pop());
+const { keccak256 } = require('js-sha3');
+const log = require('log4js').getLogger('Orgid_json');
 log.level = 'debug';
 
 module.exports = function (config) {
     const { currentEnvironment, environments } = config();
-    console.log('!!!!!!!', currentEnvironment);
     const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 
     const mkdir = async (path, options) => {

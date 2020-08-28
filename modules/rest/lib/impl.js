@@ -66,7 +66,12 @@ module.exports = function (cfg) {
 
     //app.use(require('morgan')('dev'));
     app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
-    app.use(require('body-parser').json({ limit: '50mb' }));
+    app.use(require('body-parser').json({
+        limit: '50mb',
+        verify: (req, res, buf) => {
+            req.rawBody = buf.toString('utf8');
+        }
+    }));
 
     app.use('/uploads', express.static('uploads'));
 

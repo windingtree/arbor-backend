@@ -32,12 +32,15 @@
     "sequelize": "6.1.0",
     "swagger-ui-express": "4.1.4",
     "url": "0.11.0",
-    "web3": "1.2.9",
+    "web3": "1.2.11",
     "winston": "3.3.3",
     "yamljs": "0.3.0",
     "zos-lib": "2.4.3",
-    "@sendgrid/mail": "7.2.1",
-    "express-http-proxy": "1.6.0"
+    "@sendgrid/mail": "7.2.4",
+    "express-http-proxy": "1.6.2",
+    "stripe": "8.89.0",
+    "@truffle/hdwallet-provider": "1.0.42",
+    "axios": "0.20.0"
   },
   "devDependencies": {
     "jest": "26.1.0",
@@ -56,6 +59,7 @@
   "scripts": {
     "test": "jest",
     "start": "node server.js",
+    "start:dev": "NODE_ENV=dev node server.js",
     "mysql": "docker-compose -f ./docker-compose.dev.yaml up"
   },
   "engines": {
