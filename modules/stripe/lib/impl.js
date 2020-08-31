@@ -347,7 +347,9 @@ module.exports = (config, models) => {
 
         if (wtBalance.add(web3.utils.toBN(gasCost)).gt(value)) {
             // Insufficient WT wallet balance
-            // @todo Refund and reject with error (???)
+            // Then cancel the payment and emit an error
+            await stripe.paymentIntents.cancel(paymentIntentId);
+            throw new Error('Payment has been cancelled: service wallet has insufficient balance');
         }
 
         const errors = payment.errors || [];
@@ -359,16 +361,11 @@ module.exports = (config, models) => {
                     async (error, transactionHash) => {
                         try {
                             if (error) {
-                                // @todo Do we need refund in case of error (???)
-                                await payment.update(
-                                    {
-                                        succeededEvent,
-                                        state: 'errored',
-                                        errors: [...errors, error.message]
-                                    }
-                                );
-                                return reject(error);
+                                await stripe.paymentIntents.cancel(paymentIntentId);
+                                reject(new Error(`Payment has been cancelled: ${error.message}`));
+                                return;
                             }
+                            await stripe.paymentIntents.capture(paymentIntentId);
                             await payment.update(
                                 {
                                     succeededEvent,
@@ -378,7 +375,6 @@ module.exports = (config, models) => {
                             );
                             resolve(transactionHash);
                         } catch (err) {
-                            // @todo Same. Do we need refund in case of error (???)
                             await payment.update(
                                 {
                                     succeededEvent,
@@ -454,6 +450,7 @@ module.exports = (config, models) => {
             amount: parseInt(estimation.amount * 100),
             currency: estimation.currency,
             payment_method_types: ['card'],
+            capture_method: 'manual',
             metadata: {
                 recipient: estimation.recipient,
                 value: estimation.value,
