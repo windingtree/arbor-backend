@@ -343,7 +343,7 @@ module.exports = (config, models) => {
 
         // Calculate total amount of payments including the last one
         const amount = succeededEvent.data.object.amount;
-        const amountUsed = await calculateAmountUsed(recipient);
+        const amountUsed = await calculateAmountUsed(payment.recipient);
         const totalAmount = amountUsed + amount;
         log.debug(`Amount paid before: ${amountUsed}`);
 
