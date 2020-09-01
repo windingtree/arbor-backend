@@ -40,7 +40,8 @@
     "express-http-proxy": "1.6.2",
     "stripe": "8.89.0",
     "@truffle/hdwallet-provider": "1.0.42",
-    "axios": "0.20.0"
+    "axios": "0.20.0",
+    "moment": "2.27.0"
   },
   "devDependencies": {
     "jest": "26.1.0",

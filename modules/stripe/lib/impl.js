@@ -1,4 +1,6 @@
+const Sequelize = require('sequelize');
 const axios = require('axios');
+const moment = require('moment');
 const Web3 = require('web3');
 const Stripe = require('stripe');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
@@ -130,6 +132,16 @@ module.exports = (config, models) => {
     // Total gas cost calculation for the smart contract transaction and ether transfer
     const estimateGasCostForMethod = async (method, args, recipient) => {
         let error;
+        const amountUsed = await calculateAmountUsed(recipient);
+        log.debug(`Amount paid before: ${amountUsed}`);
+
+        // Check payments limit
+        if (amountUsed > environment.fiatLimit) {
+            error = new Error(`30-days payments limit in US$ ${environment.fiatLimit / 100} has been reached by the recipient`);
+            error.status = 400;
+            throw error;
+        }
+
         const currency = 'usd';
         const contract = await getContract();
 
@@ -151,22 +163,7 @@ module.exports = (config, models) => {
         const etherscanResult = await axios.get(`https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${environment.etherscanKey}`);
         let gasPrice = web3.utils.toWei(etherscanResult.data.result.ProposeGasPrice, 'gwei');
         gasPrice = web3.utils.toBN(gasPrice);
-
-        // // Calculate average gas price
-        // const block = await getBlock(web3, 'latest');
-        // const transactions = await Promise.all(
-        //     block.transactions.map(tx => web3.eth.getTransaction(tx))
-        // );
-        // const sum = transactions.reduce(
-        //     (a, v) => {
-        //         v.gasPrice = typeof v.gasPrice === 'object'
-        //             ? v.gasPrice.toString()
-        //             : v.gasPrice;
-        //         return a.add(web3.utils.toBN(v.gasPrice))
-        //     },
-        //     web3.utils.toBN(0)
-        // );
-        // const gasPrice = sum.div(web3.utils.toBN(transactions.length));
+        log.debug(`Estimated gas price: ${gasPrice.toString()}`);
 
         // Gas estimated for method execution
         let methodGas = await contract.methods[method]
@@ -176,6 +173,7 @@ module.exports = (config, models) => {
                 gasPrice
             });
         methodGas = web3.utils.toBN(methodGas);
+        log.debug(`Estimated gas for method: ${methodGas.toString()}`);
 
         // Gas required for ether transfer
         let transferGas = await web3.eth.estimateGas(
@@ -186,17 +184,18 @@ module.exports = (config, models) => {
             )
         );
         transferGas = web3.utils.toBN(transferGas);
+        log.debug(`Estimated gas for ether transfer: ${transferGas.toString()}`);
 
         // Total gas amount
         const totalGas = methodGas.add(transferGas);
 
         let gasCost = totalGas.mul(gasPrice);
+        log.debug(`Estimated common gas cost: ${gasCost.toString()}`);
         // + 20%
-        gasCost = gasCost.add(
-            gasCost
-                .mul(web3.utils.toBN(120))
-                .div(web3.utils.toBN(100))
-        );
+        gasCost = gasCost
+            .mul(web3.utils.toBN(120))
+            .div(web3.utils.toBN(100));
+        log.debug(`Estimated total gas cost: ${gasCost.toString()}`);
         const gasCostEther = web3.utils.fromWei(
             gasCost.toString(),
             'ether'
@@ -310,12 +309,28 @@ module.exports = (config, models) => {
         )
     };
 
+    const calculateAmountUsed = async recipient => {
+        const payments = await models.payments.findAll({
+            where: {
+                recipient,
+                state: 'succeeded',
+                createdAt: {
+                    [Sequelize.Op.gte]: moment().subtract(30, 'days').toDate()
+                }
+            }
+        });
+        return payments.reduce(
+            (a, { succeededEvent }) => a + succeededEvent.data.object.amount,
+            0
+        );
+    };
+
     // Save `succeeded` payment intent event, starting value transfer
     // and set record to pending state
     const setPaymentIntentSucceeded = async succeededEvent => {
+        log.debug(`"amount_capturable_updated" event: ${succeededEvent.id}`);
         const paymentIntentId = succeededEvent.data.object.id;
         const payment = await getPaymentIntentById(paymentIntentId);
-
         let error;
 
         if (['cancelled', 'refunded', 'succeeded'].includes(payment.state)) {
@@ -326,45 +341,78 @@ module.exports = (config, models) => {
             throw error;
         }
 
-        // const amount = succeededEvent.data.object.amount;
+        // Calculate total amount of payments including the last one
+        const amount = succeededEvent.data.object.amount;
+        const amountUsed = await calculateAmountUsed(recipient);
+        const totalAmount = amountUsed + amount;
+        log.debug(`Amount paid before: ${amountUsed}`);
 
-        // @todo Check charge limit
-        // If limit has been exceeded then refund payment (???)
-        // Save related error to the record
+        // Check payments limit
+        if (totalAmount > environment.fiatLimit) {
+            await stripe.paymentIntents.cancel(paymentIntentId);
+            error = new Error(
+                `30-days payments limit in US$ ${environment.fiatLimit / 100} has been reached by the recipient`
+            );
+            error.status = 400;
+            throw error;
+        }
 
         const value = web3.utils.toBN(payment.value);
         const tx = buildEtherTransferTransaction(
             payment.recipient,
-            value,
+            value.toString(),
             payment.gasPrice
         );
-        console.log(tx);
 
         // Check WT wallet balance
         const wtBalance = await getBalance(environment.wtWallet);
         const gasCost = await web3.eth.estimateGas(tx);
 
-        if (wtBalance.add(web3.utils.toBN(gasCost)).gt(value)) {
+        if (wtBalance.add(web3.utils.toBN(gasCost)).lt(value)) {
             // Insufficient WT wallet balance
             // Then cancel the payment and emit an error
             await stripe.paymentIntents.cancel(paymentIntentId);
-            throw new Error('Payment has been cancelled: service wallet has insufficient balance');
+            error = new Error(
+                'Payment has been cancelled: service wallet has insufficient balance'
+            );
+            error.status = 400;
+            throw error;
         }
 
         const errors = payment.errors || [];
 
         return new Promise(
             (resolve, reject) => {
-                web3.eth.sendTransaction(
-                    tx,
-                    async (error, transactionHash) => {
+                log.debug(`Starting Ether transaction: ${JSON.stringify(tx, null, 2)}`);
+                web3.eth.sendTransaction(tx)
+                    .on('transactionHash', async transactionHash => {
+                        log.debug(`Ether sending transaction ${transactionHash} for the payment ${paymentIntentId}`);
                         try {
-                            if (error) {
-                                await stripe.paymentIntents.cancel(paymentIntentId);
-                                reject(new Error(`Payment has been cancelled: ${error.message}`));
-                                return;
-                            }
+                            payment.update(
+                                {
+                                    succeededEvent,
+                                    transactionHash
+                                }
+                            );
+                            resolve(transactionHash);
+                        } catch (err) {
+                            log.error(`Error: ${err.message}`);
+                            await payment
+                                .update(
+                                    {
+                                        succeededEvent,
+                                        state: 'errored',
+                                        errors: [...errors, err.message]
+                                    }
+                                )
+                                .catch(console.error);
+                        }
+                    })
+                    .on('receipt', async ({ transactionHash }) => {
+                        try {
+                            log.debug(`Ether sent, starting payment capture: ${paymentIntentId}`);
                             await stripe.paymentIntents.capture(paymentIntentId);
+                            log.debug(`Payment captured: ${paymentIntentId}`);
                             await payment.update(
                                 {
                                     succeededEvent,
@@ -372,19 +420,43 @@ module.exports = (config, models) => {
                                     state: 'succeeded'
                                 }
                             );
-                            resolve(transactionHash);
                         } catch (err) {
-                            await payment.update(
-                                {
-                                    succeededEvent,
-                                    state: 'errored',
-                                    errors: [...errors, err.message]
-                                }
-                            ).catch(reject);
-                            reject(error);
+                            log.error(`Error: ${err.message}`);
+                            await payment
+                                .update(
+                                    {
+                                        succeededEvent,
+                                        state: 'errored',
+                                        errors: [...errors, err.message]
+                                    }
+                                )
+                                .catch(console.error);
                         }
-                    }
-                );
+                    })
+                    .on('error', async error => {
+                        try {
+                            log.error(`sendTransaction error: ${error.message}`);
+                            await stripe.paymentIntents.cancel(paymentIntentId);
+                            const err = new Error(
+                                `Payment has been cancelled: ${error.message}`
+                            );
+                            err.status = 400;
+                            reject(err);
+                            return;
+                        } catch (err) {
+                            log.error(`Error: ${err.message}`);
+                            await payment
+                                .update(
+                                    {
+                                        succeededEvent,
+                                        state: 'errored',
+                                        errors: [...errors, err.message]
+                                    }
+                                )
+                                .catch(reject);
+                            reject(err);
+                        }
+                    });
             }
         );
     };
@@ -409,7 +481,7 @@ module.exports = (config, models) => {
                     await setPaymentIntentCreated(event);
                     break;
 
-                case 'payment_intent.succeeded':
+                case 'payment_intent.amount_capturable_updated':
                     await setPaymentIntentSucceeded(event);
                     break;
 
@@ -420,7 +492,7 @@ module.exports = (config, models) => {
                 default:
             }
         } catch (err) {
-            // console.log(err);
+            console.log(err);
             const error = new Error(`Webhook Error: ${err.message}`);
             error.status = 400;
             throw error;
