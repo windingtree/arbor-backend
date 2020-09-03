@@ -170,7 +170,8 @@ module.exports = (config, models) => {
             .apply(contract, args)
             .estimateGas({
                 from: recipient,
-                gasPrice
+                gasPrice,
+                gas: '12000000'
             });
         methodGas = web3.utils.toBN(methodGas);
         log.debug(`Estimated gas for method: ${methodGas.toString()}`);
@@ -351,10 +352,9 @@ module.exports = (config, models) => {
         }
 
         // Build ether transfer transaction
-        const value = web3.utils.toBN(payment.value);
         const tx = buildEtherTransferTransaction(
             payment.recipient,
-            value,
+            payment.value,
             payment.gasPrice
         );
 
@@ -362,7 +362,7 @@ module.exports = (config, models) => {
         const wtBalance = await getBalance(environment.wtWallet);
         const gasCost = await web3.eth.estimateGas(tx);
 
-        if (wtBalance.add(web3.utils.toBN(gasCost)).lt(value)) {
+        if (wtBalance.add(web3.utils.toBN(gasCost)).lt(web3.utils.toBN(payment.value))) {
             // Insufficient WT wallet balance
             // Then cancel the payment and emit an error
             await stripe.paymentIntents.cancel(paymentIntentId);
