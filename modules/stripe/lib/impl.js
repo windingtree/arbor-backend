@@ -343,6 +343,14 @@ module.exports = (config, models) => {
             throw error;
         }
 
+        if (payment.transactionHash) {
+            error = new Error(
+                'Payment in process'
+            );
+            error.status = 400;
+            throw error;
+        }
+
         // Calculate total amount of payments including the last one
         const amount = succeededEvent.data.object.amount;
         const amountUsed = await calculateAmountUsed(payment.recipient);
