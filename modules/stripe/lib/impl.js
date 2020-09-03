@@ -176,24 +176,17 @@ module.exports = (config, models) => {
         log.debug(`Estimated gas for method: ${methodGas.toString()}`);
 
         // Gas required for ether transfer
-        let transferGas = await web3.eth.estimateGas(
-            buildEtherTransferTransaction(
-                recipient,
-                methodGas,
-                gasPrice
-            )
-        );
-        transferGas = web3.utils.toBN(transferGas);
+        const transferGas = web3.utils.toBN('21000'); // Sending of the ether costs 21000
         log.debug(`Estimated gas for ether transfer: ${transferGas.toString()}`);
 
         // Total gas amount
         const totalGas = methodGas.add(transferGas);
 
         let gasCost = totalGas.mul(gasPrice);
-        log.debug(`Estimated common gas cost: ${gasCost.toString()}`);
+        log.debug(`Estimated gas cost: ${gasCost.toString()}`);
         // + 20%
         gasCost = gasCost
-            .mul(web3.utils.toBN(120))
+            .mul(web3.utils.toBN(100 + environment.estimationGap))
             .div(web3.utils.toBN(100));
         log.debug(`Estimated total gas cost: ${gasCost.toString()}`);
         const gasCostEther = web3.utils.fromWei(
@@ -357,10 +350,10 @@ module.exports = (config, models) => {
             throw error;
         }
 
-        const value = web3.utils.toBN(payment.value);
+        // Build ether transfer transaction
         const tx = buildEtherTransferTransaction(
             payment.recipient,
-            value.toString(),
+            payment.value,
             payment.gasPrice
         );
 
@@ -368,7 +361,7 @@ module.exports = (config, models) => {
         const wtBalance = await getBalance(environment.wtWallet);
         const gasCost = await web3.eth.estimateGas(tx);
 
-        if (wtBalance.add(web3.utils.toBN(gasCost)).lt(value)) {
+        if (wtBalance.add(web3.utils.toBN(gasCost)).lt(web3.utils.toBN(payment.value))) {
             // Insufficient WT wallet balance
             // Then cancel the payment and emit an error
             await stripe.paymentIntents.cancel(paymentIntentId);
