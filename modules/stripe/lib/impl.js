@@ -160,10 +160,16 @@ module.exports = (config, models) => {
             throw error;
         }
 
+        // Fetch current gas price
         const etherscanResult = await axios.get(`https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${environment.etherscanKey}`);
         let gasPrice = web3.utils.toWei(etherscanResult.data.result.ProposeGasPrice, 'gwei');
         gasPrice = web3.utils.toBN(gasPrice);
         log.debug(`Estimated gas price: ${gasPrice.toString()}`);
+
+        // Fetch ether rate
+        let ethPrice = await fetchPrice('ethereum', currency);
+        ethPrice = Math.ceil(Number(ethPrice) * 100);
+        log.debug(`Current ether rate: ${gasPrice.toString()}`);
 
         // Gas estimated for method execution
         let methodGas = await contract.methods[method]
@@ -180,33 +186,35 @@ module.exports = (config, models) => {
         const transferGas = web3.utils.toBN('21000'); // Sending of the ether costs 21000
         log.debug(`Estimated gas for ether transfer: ${transferGas.toString()}`);
 
+        // Calculate value to transfer
+        const value = methodGas.mul(gasPrice);
+
         // Total gas amount
         const totalGas = methodGas.add(transferGas);
-
         let gasCost = totalGas.mul(gasPrice);
         log.debug(`Estimated gas cost: ${gasCost.toString()}`);
-        // + 20%
+
+        // + add configured commission for future service expenses
         gasCost = gasCost
             .mul(web3.utils.toBN(100 + environment.estimationGap))
             .div(web3.utils.toBN(100));
         log.debug(`Estimated total gas cost: ${gasCost.toString()}`);
+        
+        // Calculate amount to pay in currency
         const gasCostEther = web3.utils.fromWei(
             gasCost.toString(),
             'ether'
         );
-
-        // Fetch ether rate
-        let ethPrice = await fetchPrice('ethereum', currency);
-        ethPrice = Math.ceil(Number(ethPrice) * 100);
+        const amount = (Number(gasCostEther) * ethPrice / 100).toFixed(2);
 
         const estimation = await models.estimations.create(
             {
                 recipient,
                 method,
                 args,
-                amount: (Number(gasCostEther) * ethPrice / 100).toFixed(2),
+                amount,
                 currency,
-                value: gasCost.toString(),
+                value: value.toString(),
                 gasPrice: gasPrice.toString()
             }
         );
