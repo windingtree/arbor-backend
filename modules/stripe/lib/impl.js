@@ -170,7 +170,7 @@ module.exports = (config, models) => {
             .apply(contract, args)
             .estimateGas({
                 from: recipient,
-                gasPrice,
+                gasPrice: gasPrice.toString(),
                 gas: '12000000'
             });
         methodGas = web3.utils.toBN(methodGas);
