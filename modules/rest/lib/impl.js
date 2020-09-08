@@ -6,6 +6,7 @@ log.level = 'trace';
 const express = require('express');
 var app = require('express')();
 const cors = require('cors');
+const helmet = require('helmet');
 const fs = require('fs');
 const logger = require('./logger');
 const http = require('http');
@@ -42,25 +43,24 @@ module.exports = function (cfg) {
     });
     */
 
-    var server = app.listen(config.app.port, function () {
-        var host = server.address().address;
-        var port = server.address().port;
+    app.disable('x-powered-by');
+    app.use(helmet());
 
-        log.info("Server listening at http://%s:%s", host, port);
-        logger.appStarted(config.app.port, config.app.host);
-    });
+    const corsOptions = {
+        origin: environment.corsAllowList || false,
+        optionsSuccessStatus: 200,
+        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
+        exposedHeaders: 'Content-Range,X-Content-Range'
+    };
 
-    // app.logger = appLogger;
+    app.options('*', cors(corsOptions));
+    app.use(cors(corsOptions));
 
-    app.options('*', cors());
-    app.use(cors());
     app.use((req, res, next) => {
         if(req.url.indexOf('mediaType') === -1){
             res.header('Content-Type', 'application/vnd.api+json');
         }
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
         next();
     });
 
@@ -85,7 +85,6 @@ module.exports = function (cfg) {
     swaggerDocument.servers = [{ url: `https://${config.app.host}${(config.app.host && config.app.host !== 80) ? `:${config.app.host}` : ``}` }];
     swaggerDocument.info.version = version;
     app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
 
     const routers = [];
     const middlewares = [];
@@ -193,6 +192,14 @@ module.exports = function (cfg) {
         }
     };
 
+    const server = app.listen(config.app.port, function () {
+        const host = server.address().address;
+        const port = server.address().port;
+
+        log.info('Server listening at http://%s:%s', host, port);
+        logger.appStarted(config.app.port, config.app.host);
+    });
+
     return Promise.resolve({
         addRouter,
         addMiddleware,
@@ -200,5 +207,4 @@ module.exports = function (cfg) {
         decorateError,
         extendWithPagination
     });
-
 };

@@ -41,7 +41,8 @@
     "stripe": "8.92.0",
     "@truffle/hdwallet-provider": "1.0.43",
     "axios": "0.20.0",
-    "moment": "2.27.0"
+    "moment": "2.27.0",
+    "helmet": "4.1.0"
   },
   "devDependencies": {
     "jest": "26.4.2",
