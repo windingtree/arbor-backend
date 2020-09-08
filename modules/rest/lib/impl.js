@@ -47,8 +47,30 @@ module.exports = function (cfg) {
     app.use(helmet());
     app.use(
         helmet.hsts({
-          maxAge: 31536000,
-          includeSubDomains: true
+            maxAge: 31536000,
+            includeSubDomains: true
+        })
+    );
+    app.use(
+        helmet.permittedCrossDomainPolicies({
+          permittedPolicies: "master-only",
+        })
+    );
+    app.use(
+        helmet.contentSecurityPolicy({
+          directives: {
+            defaultSrc: ["'self'"],
+            baseUri: ["'self'"],
+            blockAllMixedContent: [],
+            fontSrc: ["'self'", "https:", "data:"],
+            frameAncestors: ["'self'"],
+            imgSrc: ["'self'", "data:"],
+            objectSrc: ["'none'"],
+            scriptSrc: ["'self'"],
+            scriptSrcAttr: ["'none'"],
+            styleSrc: ["'self'", "https:"],
+            upgradeInsecureRequests: []
+          },
         })
     );
 
@@ -69,6 +91,7 @@ module.exports = function (cfg) {
         }
         res.header('Cache-control', 'no-store');
         res.header('Pragma', 'no-cache');
+        res.header('Expires', '-1');
         next();
     });
 
