@@ -45,6 +45,12 @@ module.exports = function (cfg) {
 
     app.disable('x-powered-by');
     app.use(helmet());
+    app.use(
+        helmet.hsts({
+          maxAge: 31536000,
+          includeSubDomains: true
+        })
+    );
 
     const corsOptions = {
         origin: environment.corsAllowList || false,
@@ -61,6 +67,8 @@ module.exports = function (cfg) {
         if(req.url.indexOf('mediaType') === -1){
             res.header('Content-Type', 'application/vnd.api+json');
         }
+        res.header('Cache-control', 'no-store');
+        res.header('Pragma', 'no-cache');
         next();
     });
 
