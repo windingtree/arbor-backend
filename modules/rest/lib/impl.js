@@ -15,6 +15,7 @@ const YAML = require('yamljs');
 const path = require('path');
 const { version } = require('../../../package.json');
 const proxy = require('express-http-proxy');
+const rateLimit = require('express-rate-limit');
 
 // const appLogger = require('../../../utils/logger');
 // const routeInitialize = require('../../../routes');
@@ -42,7 +43,7 @@ module.exports = function (cfg) {
         logger.appStarted(config.app.port, config.app.host);
     });
     */
-
+    app.set('trust proxy', 1);
     app.disable('x-powered-by');
     app.use(helmet());
     app.use(
@@ -81,7 +82,6 @@ module.exports = function (cfg) {
         allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
         exposedHeaders: 'Content-Range,X-Content-Range'
     };
-
     app.options('*', cors(corsOptions));
     app.use(cors(corsOptions));
 
@@ -103,6 +103,14 @@ module.exports = function (cfg) {
             req.rawBody = buf.toString('utf8');
         }
     }));
+
+    const apiLimiterConfig = {
+        windowMs: environment.limiterWindowMs,
+        max: environment.limiterMax,
+        message: 'Too many requests from this IP'
+    };
+    app.options('*', rateLimit(apiLimiterConfig));
+    app.use(rateLimit(apiLimiterConfig));
 
     app.use('/uploads', express.static('uploads'));
 
