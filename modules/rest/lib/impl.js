@@ -156,7 +156,7 @@ module.exports = function (cfg) {
     );
 
     // Errors handling
-    app.use((req, res, next) => next(error404('Path Not Found')));
+    // app.use((req, res, next) => next(error404('Path Not Found')));
     app.use(logErrors);
     app.use(errorHandler);
 
