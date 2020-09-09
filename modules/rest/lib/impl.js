@@ -43,6 +43,22 @@ module.exports = function (cfg) {
         logger.appStarted(config.app.port, config.app.host);
     });
     */
+
+    // Handle URI errors
+    app.use(function (req, res, next) {
+        var err = null;
+        try {
+            decodeURIComponent(req.path);
+        } catch (e) {
+            err = e;
+        }
+        if (err) {
+            console.log(err, req.url);
+            return res.status(404).json({ message: 'Path not found' });
+        }
+        next();
+    });
+
     app.set('trust proxy', 1);
     app.disable('x-powered-by');
     app.use(helmet());
@@ -74,16 +90,6 @@ module.exports = function (cfg) {
           },
         })
     );
-
-    const corsOptions = {
-        origin: environment.corsAllowList || false,
-        optionsSuccessStatus: 200,
-        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
-        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
-        exposedHeaders: 'Content-Range,X-Content-Range'
-    };
-    app.options('*', cors(corsOptions));
-    app.use(cors(corsOptions));
 
     app.use((req, res, next) => {
         if(req.url.indexOf('mediaType') === -1){
@@ -118,6 +124,16 @@ module.exports = function (cfg) {
     app.use('/simard', proxy(environment.simard, {
         https: true
     }));
+
+    const corsOptions = {
+        origin: environment.corsAllowList || false,
+        optionsSuccessStatus: 200,
+        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
+        exposedHeaders: 'Content-Range,X-Content-Range'
+    };
+    app.options('*', cors(corsOptions));
+    app.use(cors(corsOptions));
 
     // Swagger docs.
     const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));
