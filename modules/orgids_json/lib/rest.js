@@ -21,13 +21,7 @@ module.exports = function (rest, orgids_json) {
     const environment = orgids_json.environment();
     const baseUrl = environment.baseUrl;
 
-    // const baseUrl = (req => {
-    //     //url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
-    //     return 'https://staging-api.arbor.fm/';
-    // });
-    
-
-    router.post('/json', async (req, res) => {
+    router.post('/json', async (req, res, next) => {
         const { address, orgidJson } = req.body;
         try {
             const uri = await orgids_json.saveJson(address, orgidJson, baseUrl);
@@ -39,13 +33,12 @@ module.exports = function (rest, orgids_json) {
                 }
             };
             res.status(200).send(json)
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+        } catch (error) {
+            return next(error);
         }
     });
 
-    router.post('/media', upload.single('media'), async (req, res) => {
+    router.post('/media', upload.single('media'), async (req, res, next) => {
         try {
             console.log(req.body);
             console.log(req.file);
@@ -61,9 +54,8 @@ module.exports = function (rest, orgids_json) {
                 }
             };
             res.status(200).send(json)
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+        } catch (error) {
+            return next(error);
         }
     });
 

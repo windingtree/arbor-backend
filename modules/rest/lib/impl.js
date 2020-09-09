@@ -17,9 +17,39 @@ const { version } = require('../../../package.json');
 const proxy = require('express-http-proxy');
 const rateLimit = require('express-rate-limit');
 
-// const appLogger = require('../../../utils/logger');
-// const routeInitialize = require('../../../routes');
+const error404 = message => {
+    const error = new Error(message || 'Not Found');
+    error.status = 404;
+    return error;
+};
 
+const logErrors = (error, req, res, next) => {
+    log.error(error);
+    next(error);
+};
+
+const errorHandler = (error, req, res, next) => {
+    let status;
+    let errors;
+
+    if (!Array.isArray(error)) {
+        errors = [error];
+        status = error.status || error.code || 500;
+    } else {
+        errors = error;
+        status = 422;
+    }
+
+    const json = {
+        errors: errors.map(e => ({
+            message: e.message || 'Internal server error',
+            status: e.status || e.code || 500,
+            ...(req && req.path ? { path: req.path } : {}),
+            ...(process.env.NODE_ENV === 'dev' ? { stack: e.stack } : {})
+        }))
+    };
+    res.status(status).json(json);
+};
 
 module.exports = function (cfg) {
     const config = cfg();
@@ -28,39 +58,73 @@ module.exports = function (cfg) {
 
     console.log(` ..: SNOWBALL :.. \r\n process.env.NODE_ENV ${process.env.NODE_ENV}\r\n`);
 
-    //config.app.sslOptions = {
-    //    key: fs.readFileSync(`config/cert/${config.app.host}/privkey.pem`),
-    //    cert: fs.readFileSync(`config/cert/${config.app.host}/fullchain.pem`)
-    //};
-
-    // eslint-disable-line no-unused-vars
-    /*
-    https.createServer(config.app.sslOptions, app).listen(config.app.port, // config.app.host, // (err) => {
-        if (err) {
-            return logger.error(err.message);
-        }
-        log.info('HTTP Server started on', config.app.host, 'and listen to', config.app.port, 'port.');
-        logger.appStarted(config.app.port, config.app.host);
-    });
-    */
+    app.set('trust proxy', 1);
+    app.disable('x-powered-by');
 
     // Handle URI errors
-    app.use(function (req, res, next) {
-        var err = null;
+    app.use((req, res, next) => {
         try {
             decodeURIComponent(req.path);
-        } catch (e) {
-            err = e;
+            next();
+        } catch (error) {
+            next(error);
         }
-        if (err) {
-            console.log(err, req.url);
-            return res.status(404).json({ message: 'Path not found' });
+    });
+
+    // Rate limiter
+    const apiLimiterConfig = {
+        windowMs: environment.limiterWindowMs,
+        max: environment.limiterMax,
+        message: 'Too many requests from this IP'
+    };
+    app.options('*', rateLimit(apiLimiterConfig));
+    app.use(rateLimit(apiLimiterConfig));
+
+    // Swagger docs.
+    const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));
+    swaggerDocument.servers = [{ url: `https://${config.app.host}${(config.app.host && config.app.host !== 80) ? `:${config.app.host}` : ``}` }];
+    swaggerDocument.info.version = version;
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+    // Content type
+    app.use((req, res, next) => {
+        if(req.url.indexOf('mediaType') === -1){
+            res.header('Content-Type', 'application/vnd.api+json');
         }
+        res.header('Cache-control', 'no-store');
+        res.header('Pragma', 'no-cache');
+        res.header('Expires', '-1');
         next();
     });
 
-    app.set('trust proxy', 1);
-    app.disable('x-powered-by');
+    //app.use(require('morgan')('dev'));
+    app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
+    app.use(require('body-parser').json({
+        limit: '50mb',
+        verify: (req, res, buf) => {
+            req.rawBody = buf.toString('utf8');
+        }
+    }));
+
+    app.use('/uploads', express.static('uploads'));
+
+    // Simard proxy
+    app.use('/simard', proxy(environment.simard, {
+        https: true
+    }));
+
+    // CORS
+    const corsOptions = {
+        origin: environment.corsAllowList || false,
+        optionsSuccessStatus: 200,
+        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
+        exposedHeaders: 'Content-Range,X-Content-Range'
+    };
+    app.options('*', cors(corsOptions));
+    app.use(cors(corsOptions));
+
+    // Security headers
     app.use(helmet());
     app.use(
         helmet.hsts({
@@ -91,88 +155,23 @@ module.exports = function (cfg) {
         })
     );
 
-    app.use((req, res, next) => {
-        if(req.url.indexOf('mediaType') === -1){
-            res.header('Content-Type', 'application/vnd.api+json');
-        }
-        res.header('Cache-control', 'no-store');
-        res.header('Pragma', 'no-cache');
-        res.header('Expires', '-1');
-        next();
-    });
-
-    //app.use(require('morgan')('dev'));
-    app.use(require('body-parser').urlencoded({ limit: '50mb', extended: true }));
-    app.use(require('body-parser').json({
-        limit: '50mb',
-        verify: (req, res, buf) => {
-            req.rawBody = buf.toString('utf8');
-        }
-    }));
-
-    const apiLimiterConfig = {
-        windowMs: environment.limiterWindowMs,
-        max: environment.limiterMax,
-        message: 'Too many requests from this IP'
-    };
-    app.options('*', rateLimit(apiLimiterConfig));
-    app.use(rateLimit(apiLimiterConfig));
-
-    app.use('/uploads', express.static('uploads'));
-
-    // Simard proxy
-    app.use('/simard', proxy(environment.simard, {
-        https: true
-    }));
-
-    const corsOptions = {
-        origin: environment.corsAllowList || false,
-        optionsSuccessStatus: 200,
-        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
-        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
-        exposedHeaders: 'Content-Range,X-Content-Range'
-    };
-    app.options('*', cors(corsOptions));
-    app.use(cors(corsOptions));
-
-    // Swagger docs.
-    const swaggerDocument = YAML.load(path.resolve(__dirname, '../../../docs/swagger.yaml'));
-    swaggerDocument.servers = [{ url: `https://${config.app.host}${(config.app.host && config.app.host !== 80) ? `:${config.app.host}` : ``}` }];
-    swaggerDocument.info.version = version;
-    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    // Errors handling
+    app.use((req, res, next) => next(error404('Path Not Found')));
+    app.use(logErrors);
+    app.use(errorHandler);
 
     const routers = [];
     const middlewares = [];
 
-    const addRouter = (router) => routers.push(router);
-    const addMiddleware = (middleware) => middlewares.push(middleware);
+    const addRouter = router => routers.push(router);
+    const addMiddleware = middleware => middlewares.push(middleware);
 
     const init = () => {
         _.each(middlewares, middleware => app.use(middleware));
         _.each(routers, router => app.use(router[0], router[1]));
     };
 
-    const decorateError = (e) => {
-        let code = e.code || 500;
-        let json = {
-            errors: [{
-                message: e.message || 'Internal server error',
-                code
-            }]
-        };
-        // if (e.code && e.title) {
-        //     code = e.code;
-        //     let error = _.pick(e, ['code', 'status', 'title', 'detail', 'source']);
-        //     json = {
-        //         errors: [error]
-        //     };
-        // } else {
-        //     log.error(e);
-        // }
-        return { code, json }
-    };
-
-    const getUrlGenerator = (protocol, host, pathname) => (search) => {
+    const getUrlGenerator = (protocol, host, pathname) => search => {
         return url.format({
             protocol,
             host,
@@ -183,7 +182,7 @@ module.exports = function (cfg) {
 
     const DEFAULT_PAGE_SIZE = 25;
 
-    const fillQuery = (query) => {
+    const fillQuery = query => {
         if (typeof query.page !== 'object') return { ...query, page: { number:1, size: DEFAULT_PAGE_SIZE }};
         query.page.number = (!query.page.number) ? 1 : parseInt(query.page.number, 10);
         query.page.size =  (!query.page.size) ? DEFAULT_PAGE_SIZE : parseInt(query.page.size, 10);
@@ -206,7 +205,7 @@ module.exports = function (cfg) {
         return value;
     };
 
-    const extendWithPagination = async (req, res, rowCountPromise, querySchema) => {
+    const extendWithPagination = async (req, res, rowCountPromise, querySchema, next) => {
         const query = fillQuery(req.query);
         const { size, number: pageNumber } = query.page;
         const getUrl = getUrlGenerator(req.protocol, req.get('host'), req.route ? req.baseUrl + req.route.path : req.baseUrl);
@@ -236,18 +235,14 @@ module.exports = function (cfg) {
                 json.links.last = getUrl(_.extend(query, { page: { number: lastPage, size } }));
                 json.links.next = getUrl(_.extend(query, { page: { number: pageNumber + 1, size } }));
             }
-            res.status(200).send(json)
-        } catch (e) {
-            if (!(e instanceof Error) && Array.isArray(e)) { // Joe Schema Validation
-                return res.status(422).send({ errors: e });
-            }
-
-            const {code, json} = decorateError(e);
-            return res.status(code).send(json)
+            res.status(200).json(json);
+        } catch (error) {
+            return next(error);
         }
     };
 
-    const server = app.listen(config.app.port, function () {
+    // Start server
+    const server = app.listen(config.app.port, () => {
         const host = server.address().address;
         const port = server.address().port;
 
@@ -259,7 +254,6 @@ module.exports = function (cfg) {
         addRouter,
         addMiddleware,
         init,
-        decorateError,
         extendWithPagination
     });
 };

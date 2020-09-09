@@ -11,29 +11,25 @@ module.exports = (rest, controller) => {
         createPaymentIntent
     } = controller;
 
-    router.get('/balance', async (req, res) => {
+    router.get('/balance', async (req, res, next) => {
         try {
             const balance = await getWalletBalance();
             res.status(200).json({ balance });
         } catch (error) {
-            res.status(error.status || 500).json({
-                error: error.message
-            });
+            return next(error);
         }
     });
 
-    router.get('/status/:paymentIntentId', async (req, res) => {
+    router.get('/status/:paymentIntentId', async (req, res, next) => {
         try {
             const status = await getPaymentIntentStatus(req.params.paymentIntentId);
             res.status(200).json(status);
         } catch (error) {
-            res.status(error.status || 500).json({
-                error: error.message
-            });
+            return next(error);
         }
     });
 
-    router.post('/estimation', async (req, res) => {
+    router.post('/estimation', async (req, res, next) => {
         try {
             const {
                 method,
@@ -70,14 +66,11 @@ module.exports = (rest, controller) => {
                 gasPrice
             });
         } catch (error) {
-            console.log(error);
-            res.status(error.status || 500).json({
-                error: error.message
-            });
+            return next(error);
         }
     });
 
-    router.post('/intent/:estimationId', async (req, res) => {
+    router.post('/intent/:estimationId', async (req, res, next) => {
         try {
             if (!req.params.estimationId) {
                 return res.status(400).json({
@@ -87,22 +80,18 @@ module.exports = (rest, controller) => {
             const paymentIntent = await createPaymentIntent(req.params.estimationId);
             res.status(200).json(paymentIntent);
         } catch (error) {
-            res.status(error.status || 500).json({
-                error: error.message
-            });
+            return next(error);
         }
     });
 
-    router.post('/webhook', async (req, res) => {
+    router.post('/webhook', async (req, res, next) => {
         const stripeSignature = req.headers['stripe-signature'];
 
         try {
             await handleStripeWebHook(req.rawBody, stripeSignature);
             res.status(200).json({ received: true });
         } catch (error) {
-            res.status(error.status || 500).json({
-                error: error.message
-            });
+            return next(error);
         }
     });
 

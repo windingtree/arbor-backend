@@ -18,7 +18,7 @@ module.exports = function (rest, cached) {
         })
     };
 
-    router.get('/orgids/:address', async (req, res) => {
+    router.get('/orgids/:address', async (req, res, next) => {
         const { address } = req.params;
 
         try {
@@ -33,59 +33,62 @@ module.exports = function (rest, cached) {
                     ...orgId
                 }
             };
-            res.status(200).send(json);            
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            res.status(code).send(json);
+            res.status(200).send(json);
+        } catch (error) {
+            return next(error);
         }
     });
 
-    router.get('/orgids/owned/:ownerAddress', async (req, res) => {
+    router.get('/orgids/owned/:ownerAddress', async (req, res, next) => {
         const { ownerAddress } = req.params;
         try {
             const orgIds = await cached.getOrgIds({owner: ownerAddress});
             res.status(200).send({data: orgIds})
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+        } catch (error) {
+            return next(error);
         }
     });
 
-    router.get('/orgids', async (req, res) => {
-        req.query = typeof req.query === 'object' ? req.query : {};
-        req.query = Object.assign({}, req.query, {
-            state: req.query.state || true
-        });
-        if (req.query.all === 'true' || req.query['parent.orgid']) {
-            delete req.query.state;
-        }
-        delete req.query.all;
-        const orgidsQuerySchema = Joi.object({
-            'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
-            'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
-            'name': Joi.string(),
-            'owner': Joi.string().length(42), // Length of an Ethereum address with 0x prefix 
-            'country': Joi.string().length(2),
-            'state': Joi.boolean(),
-            'parent.orgid': Joi.string().length(66), // Length of an ORG.ID with 0x prefix 
-            'sort': Joi.string(), //?sort=primary-address.street-1,-name
-            ...pageSchema
-        });
+    router.get('/orgids', async (req, res, next) => {
+        try {
+            req.query = typeof req.query === 'object' ? req.query : {};
+            req.query = Object.assign({}, req.query, {
+                state: req.query.state || true
+            });
 
-        return rest.extendWithPagination(req, res, cached.getOrgIds, orgidsQuerySchema);
+            if (req.query.all === 'true' || req.query['parent.orgid']) {
+                delete req.query.state;
+            }
+
+            delete req.query.all;
+            const orgidsQuerySchema = Joi.object({
+                'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
+                'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
+                'name': Joi.string(),
+                'owner': Joi.string().length(42), // Length of an Ethereum address with 0x prefix
+                'country': Joi.string().length(2),
+                'state': Joi.boolean(),
+                'parent.orgid': Joi.string().length(66), // Length of an ORG.ID with 0x prefix
+                'sort': Joi.string(), //?sort=primary-address.street-1,-name
+                ...pageSchema
+            });
+
+            return rest.extendWithPagination(req, res, cached.getOrgIds, orgidsQuerySchema, next);
+        } catch (error) {
+            return next(error);
+        }
     });
 
-    router.get('/segments', async (req, res) => {
+    router.get('/segments', async (req, res, next) => {
         try {
             const segments = await cached.getSegments();
             res.status(200).send({data: segments})
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+        } catch (error) {
+            return next(error);
         }
     });
 
-    router.post('/drafts', async (req, res) => {
+    router.post('/drafts', async (req, res, next) => {
         try {
             const { profileId, password } = await cached.saveProfileDraft(req.body);
             const basePath = environment.network === 'ropsten' ? 'staging.arbor.fm' : 'marketplace.windingtree.com';
@@ -131,7 +134,7 @@ module.exports = function (rest, cached) {
                         border-bottom: 2px solid #E3F9EB;
                     }
                     .logo {
-                        
+
                     }
                     h1 {
                         font-family: Arial, Helvetica, sans-serif;
@@ -177,7 +180,7 @@ module.exports = function (rest, cached) {
                         <td class="center">
                             <div class="logo">
                                 <img src="https://${basePath}/wlogo.png" />
-                            </div>          
+                            </div>
                         </td>
                         <td class="pad">&nbsp;</td>
                     </tr>
@@ -221,41 +224,37 @@ module.exports = function (rest, cached) {
                 profileId
             });
         } catch (error) {
-            const {code, json} = rest.decorateError(error);
-            res.status(code).send(json);
+            return next(error);
         }
     });
 
-    router.put('/drafts/:profileId/:password', async (req, res) => {
-        const { profileId, password } = req.params;
+    router.put('/drafts/:profileId/:password', async (req, res, next) => {
         try {
+            const { profileId, password } = req.params;
             await cached.updateProfileDraft(profileId, password, req.body);
             res.status(200).send('OK');
         } catch (error) {
-            const {code, json} = rest.decorateError(error);
-            res.status(code).send(json);
+            return next(error);
         }
     });
 
-    router.delete('/drafts/:profileId/:password', async (req, res) => {
+    router.delete('/drafts/:profileId/:password', async (req, res, next) => {
         const { profileId, password } = req.params;
         try {
             await cached.removeProfileDraft(profileId, password);
             res.status(200).send('OK');
         } catch (error) {
-            const {code, json} = rest.decorateError(error);
-            res.status(code).send(json);
+            return next(error);
         }
     });
 
-    router.get('/drafts/:profileId', async (req, res) => {
+    router.get('/drafts/:profileId', async (req, res, next) => {
         const { profileId } = req.params;
         try {
             const profile = await cached.getProfileDraft(profileId);
             res.status(200).json(profile);
         } catch (error) {
-            const {code, json} = rest.decorateError(error);
-            res.status(code).send(json);
+            return next(error);
         }
     });
 
