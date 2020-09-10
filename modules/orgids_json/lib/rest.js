@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer  = require('multer');
-const url = require('url');
+const didDocumentSchema = require('@windingtree/org.json-schema');
+const Ajv = require('ajv');
 const filenameSplitted = __filename.split(__filename[0]);
 const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.length - 3]}/${filenameSplitted[filenameSplitted.length - 1].replace('.js', '')}`);
 log.level = 'debug';
@@ -22,8 +23,18 @@ module.exports = function (rest, orgids_json) {
     const baseUrl = environment.baseUrl;
 
     router.post('/json', async (req, res, next) => {
-        const { address, orgidJson } = req.body;
         try {
+            const { address, orgidJson } = req.body;
+            const validator = new Ajv();
+            validator.validate(didDocumentSchema, orgidJson);
+
+            if (validator.errors) {
+                const validationError = new Error('ORG JSON Schema mismatch');
+                validationError.status = 400;
+                validationError.errors = validator.errors;
+                throw validationError;
+            }
+
             const uri = await orgids_json.saveJson(address, orgidJson, baseUrl);
             log.debug('json saved. uri', uri);
             const json = {
@@ -32,7 +43,7 @@ module.exports = function (rest, orgids_json) {
                     uri
                 }
             };
-            res.status(200).send(json)
+            res.status(200).json(json);
         } catch (error) {
             return next(error);
         }
