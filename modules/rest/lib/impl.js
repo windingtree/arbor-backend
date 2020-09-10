@@ -1,18 +1,15 @@
 const _ = require('lodash');
-const url = require('url');
-const qs = require('qs');
 const log = require('log4js').getLogger('rest:server');
 log.level = 'trace';
 const express = require('express');
 var app = require('express')();
 const cors = require('cors');
 const helmet = require('helmet');
-const fs = require('fs');
 const logger = require('./logger');
-const http = require('http');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
+// const { Error } = require('sequelize');
 const { version } = require('../../../package.json');
 const proxy = require('express-http-proxy');
 const rateLimit = require('express-rate-limit');
@@ -21,11 +18,6 @@ const error404 = message => {
     const error = new Error(message || 'Not Found');
     error.status = 404;
     return error;
-};
-
-const logErrors = (error, req, res, next) => {
-    log.error(error);
-    next(error);
 };
 
 const errorHandler = (error, req, res, next) => {
@@ -41,17 +33,27 @@ const errorHandler = (error, req, res, next) => {
     }
 
     const json = {
-        errors: errors.map(e => ({
-            message: e.message || 'Internal server error',
-            status: e.status || e.code || 500,
-            ...(req && req.path ? { path: req.path } : {}),
-            ...(process.env.NODE_ENV === 'dev' ? { stack: e.stack } : {})
-        }))
+        errors: errors.map(e => {
+
+            // Handle Sequelize errors
+            if (e.sql && process.env.NODE_ENV !== 'dev') {
+                e.message = 'Database Error';
+            }
+
+            return {
+                message: e.message || 'Internal server error',
+                status: e.status || e.code || 500,
+                ...(req && req.path ? { path: req.path } : {}),
+                ...(process.env.NODE_ENV === 'dev' ? { stack: e.stack } : {}),
+                ...(process.env.NODE_ENV === 'dev' ? { details: e } : {})
+            };
+        })
     };
+    log.error(json);
     res.status(status).json(json);
 };
 
-module.exports = function (cfg) {
+module.exports = cfg => {
     const config = cfg();
     const { currentEnvironment, environments } = config;
     const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
@@ -155,11 +157,6 @@ module.exports = function (cfg) {
         })
     );
 
-    // Errors handling
-    // app.use((req, res, next) => next(error404('Path Not Found')));
-    app.use(logErrors);
-    app.use(errorHandler);
-
     const routers = [];
     const middlewares = [];
 
@@ -169,76 +166,10 @@ module.exports = function (cfg) {
     const init = () => {
         _.each(middlewares, middleware => app.use(middleware));
         _.each(routers, router => app.use(router[0], router[1]));
-    };
 
-    const getUrlGenerator = (protocol, host, pathname) => search => {
-        return url.format({
-            protocol,
-            host,
-            pathname,
-            search: qs.stringify(search)
-        })
-    };
-
-    const DEFAULT_PAGE_SIZE = 25;
-
-    const fillQuery = query => {
-        if (typeof query.page !== 'object') return { ...query, page: { number:1, size: DEFAULT_PAGE_SIZE }};
-        query.page.number = (!query.page.number) ? 1 : parseInt(query.page.number, 10);
-        query.page.size =  (!query.page.size) ? DEFAULT_PAGE_SIZE : parseInt(query.page.size, 10);
-        return query
-    };
-
-    const validateJoiSchema = (schema, data) => {
-        const { error, value } = schema.validate(data);
-        if (error) {
-            const { details } = error;
-            throw _.map(details, ({message, path}) => ({
-                "status": 422,
-                "title": "Invalid Attribute",
-                "source": {
-                    "pointer": path.join('/')
-                },
-                "detail": message
-            }));
-        }
-        return value;
-    };
-
-    const extendWithPagination = async (req, res, rowCountPromise, querySchema, next) => {
-        const query = fillQuery(req.query);
-        const { size, number: pageNumber } = query.page;
-        const getUrl = getUrlGenerator(req.protocol, req.get('host'), req.route ? req.baseUrl + req.route.path : req.baseUrl);
-        const self = getUrl(query);
-        try {
-            const where = querySchema ? validateJoiSchema(querySchema, query) : query;
-
-            const { rows, count } = await rowCountPromise(where);
-            const lastPage = Math.ceil(count / size);
-            const json = {
-                meta: {
-                    page: pageNumber,
-                    per_page: size,
-                    total: count,
-                    pages: lastPage
-                },
-                links: {
-                    self,
-                },
-                data: rows
-            };
-            if (pageNumber !== 1) {
-                json.links.first = getUrl(_.extend(query, { page: { number: 1, size } }));
-                json.links.prev = getUrl(_.extend(query, { page: { number: pageNumber - 1, size } }));
-            }
-            if (pageNumber !== lastPage) {
-                json.links.last = getUrl(_.extend(query, { page: { number: lastPage, size } }));
-                json.links.next = getUrl(_.extend(query, { page: { number: pageNumber + 1, size } }));
-            }
-            res.status(200).json(json);
-        } catch (error) {
-            return next(error);
-        }
+        // Errors handling
+        app.use(errorHandler);
+        app.use((req, res) => errorHandler(error404('Path Not Found'), req, res));
     };
 
     // Start server
@@ -253,7 +184,6 @@ module.exports = function (cfg) {
     return Promise.resolve({
         addRouter,
         addMiddleware,
-        init,
-        extendWithPagination
+        init
     });
 };

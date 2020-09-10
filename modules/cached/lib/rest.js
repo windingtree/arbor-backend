@@ -1,7 +1,6 @@
 const Joi = require('@hapi/joi');
 const express = require('express');
 const router = express.Router();
-const filenameSplitted = __filename.split(__filename[0]);
 const log = require("log4js").getLogger('rest');
 log.level = 'debug';
 const sgMail = require('@sendgrid/mail');
@@ -10,13 +9,6 @@ const sgMail = require('@sendgrid/mail');
 module.exports = function (rest, cached) {
     const environment = cached.environment();
     sgMail.setApiKey(environment.sendgridApiKey);
-
-    const pageSchema = {
-        page: Joi.object({
-            number: Joi.number(),
-            size: Joi.number()
-        })
-    };
 
     router.get('/orgids/:address', async (req, res, next) => {
         const { address } = req.params;
@@ -51,29 +43,8 @@ module.exports = function (rest, cached) {
 
     router.get('/orgids', async (req, res, next) => {
         try {
-            req.query = typeof req.query === 'object' ? req.query : {};
-            req.query = Object.assign({}, req.query, {
-                state: req.query.state || true
-            });
-
-            if (req.query.all === 'true' || req.query['parent.orgid']) {
-                delete req.query.state;
-            }
-
-            delete req.query.all;
-            const orgidsQuerySchema = Joi.object({
-                'orgidType': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
-                'directory': Joi.string().valid(...['hotel', 'airline', 'insurance', 'ota', 'legalEntity']),
-                'name': Joi.string(),
-                'owner': Joi.string().length(42), // Length of an Ethereum address with 0x prefix
-                'country': Joi.string().length(2),
-                'state': Joi.boolean(),
-                'parent.orgid': Joi.string().length(66), // Length of an ORG.ID with 0x prefix
-                'sort': Joi.string(), //?sort=primary-address.street-1,-name
-                ...pageSchema
-            });
-
-            return rest.extendWithPagination(req, res, cached.getOrgIds, orgidsQuerySchema, next);
+            const orgids = await cached.getOrgIds(req);
+            res.status(200).json(orgids);
         } catch (error) {
             return next(error);
         }
