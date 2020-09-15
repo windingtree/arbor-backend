@@ -49,7 +49,7 @@ const errorHandler = (error, req, res, next) => {
             };
         })
     };
-    log.error(json);
+    log.error(JSON.stringify(json));
     res.status(status).json(json);
 };
 
@@ -108,23 +108,22 @@ module.exports = cfg => {
         }
     }));
 
+    // CORS
+    const corsOptions = {
+        origin: environment.corsAllowList || false,
+        optionsSuccessStatus: 200,
+        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
+        exposedHeaders: 'Content-Range,X-Content-Range'
+    };
+    app.use(cors(corsOptions));
+
     app.use('/uploads', express.static('uploads'));
 
     // Simard proxy
     app.use('/simard', proxy(environment.simard, {
         https: true
     }));
-
-    // CORS
-    const corsOptions = {
-        origin: environment.corsAllowList || false,
-        optionsSuccessStatus: 200,
-        methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
-        allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept',
-        exposedHeaders: 'Content-Range,X-Content-Range'
-    };
-    app.options('*', cors(corsOptions));
-    app.use(cors(corsOptions));
 
     // Security headers
     app.use(helmet());
@@ -168,6 +167,7 @@ module.exports = cfg => {
         _.each(routers, router => app.use(router[0], router[1]));
 
         // Errors handling
+        // should be at the end of all routes
         app.use(errorHandler);
         app.use((req, res) => errorHandler(error404('Path Not Found'), req, res));
     };
