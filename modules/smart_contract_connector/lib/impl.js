@@ -336,7 +336,8 @@ module.exports = (config, cached) => {
                 )
                 : null;
 
-            isWebsiteProved = getTrustAssertsion(resolverResult, 'dns', '');
+                isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', '') ||
+                    getTrustAssertsion(resolverResult, 'dns', '');
 
             // SSL Trust clue
             isSslProved = website
