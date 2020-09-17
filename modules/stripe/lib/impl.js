@@ -22,6 +22,21 @@ log.level = 'debug';
 //     }
 // };
 
+let gasPriceCache = '100'; // Gwei
+
+const gasPriceFetcher = async endpoints => {
+    for await (endpoint of endpoints) {
+        try {
+            const response = await axios.get(endpoint.path);
+            log.debug('GasPrice Response:', endpoint.safePath, JSON.stringify(response.data));
+            return endpoint.resolver(response);
+        } catch (err) {
+            log.debug('GasPrice API error', endpoint.safePath, err.message);
+        }
+    }
+    throw new Error('Unable to fetch Gas Price from any endpoints');
+};
+
 module.exports = (config, models) => {
     const { currentEnvironment, environments } = config();
     const environment = environments[
@@ -161,8 +176,29 @@ module.exports = (config, models) => {
         }
 
         // Fetch current gas price
-        const etherscanResult = await axios.get(`https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${environment.etherscanKey}`);
-        let gasPrice = web3.utils.toWei(etherscanResult.data.result.ProposeGasPrice, 'gwei');
+        let gasPrice;
+        try {
+            gasPrice = await gasPriceFetcher([
+                {
+                    path: `https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${environment.etherscanKey}`,
+                    safePath: 'https://api.etherscan.io/api?module=gastracker&action=gasoracle',
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.result.ProposeGasPrice)), 'gwei')
+                },
+                {
+                    path: `https://www.etherchain.org/api/gasPriceOracle`,
+                    safePath: 'https://www.etherchain.org/api/gasPriceOracle',
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.standard)), 'gwei')
+                },
+                {
+                    path: `https://ethgasstation.info/api/ethgasAPI.json?api-key=${environment.defiPulseKey}`,
+                    safePath: 'https://ethgasstation.info/api/ethgasAPI.json',
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.average / 10)), 'gwei')
+                }
+            ]);
+            gasPriceCache = gasPrice;
+        } catch (err) {
+            gasPrice = gasPriceCache;
+        }
         gasPrice = web3.utils.toBN(gasPrice);
         log.debug(`Estimated gas price: ${gasPrice.toString()}`);
 
