@@ -126,7 +126,7 @@ module.exports = (config, models) => {
     // Return an OrgId smart contract instance
     const getContract = () => new web3.eth.Contract(
         OrgIdContract.abi,
-        OrgIdAddresses[environment.network]
+        OrgIdAddresses[environment.network === 'mainnet' ? 'main' : environment.network]
     );
 
     // Total gas cost calculation for the smart contract transaction and ether transfer
@@ -199,7 +199,7 @@ module.exports = (config, models) => {
             .mul(web3.utils.toBN(100 + environment.estimationGap))
             .div(web3.utils.toBN(100));
         log.debug(`Estimated total gas cost: ${gasCost.toString()}`);
-        
+
         // Calculate amount to pay in currency
         const gasCostEther = web3.utils.fromWei(
             gasCost.toString(),
