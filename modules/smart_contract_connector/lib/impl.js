@@ -21,7 +21,7 @@ const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000
 
 module.exports = (config, cached) => {
     const { currentEnvironment, environments } = config();
-    const environment = environments[process.env.NODE_ENV === 'development' ? 'development' : currentEnvironment]; 
+    const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 
     let web3;
     let orgIdResolver;
@@ -56,10 +56,10 @@ module.exports = (config, cached) => {
             }
         }
     );
-    
+
     // Queue for promises
     const queue = new SimpleQueue();
-    
+
     // Start Listening on all OrgId contract Events
     const listenEvents = async (web3, orgidContract, orgIdResolver) => {
 
@@ -69,7 +69,7 @@ module.exports = (config, cached) => {
 
             const listenBlock = lastKnownBlockNumber - 10;
             const subscription = orgidContract.events
-                .allEvents({ 
+                .allEvents({
                     fromBlock: listenBlock >= 0 ? listenBlock : 0
                 })
 
@@ -97,9 +97,9 @@ module.exports = (config, cached) => {
 
                 // Error Event
                 .on('error', error => log.debug("=================== ERROR ===================\r\n", error));
-            
-            log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);            
-            
+
+            log.debug(`Events listening started ${chalk.grey(`from block ${lastKnownBlockNumber}`)}`);
+
             return subscription;
         } catch (error) {
             log.error('Error during listenEvents', error.toString());
@@ -112,11 +112,11 @@ module.exports = (config, cached) => {
 
         try {
             const currentBlockNumber = await getCurrentBlockNumber(web3);
-            
+
             log.debug(event.event ? event.event : event.raw, event.returnValues);
 
             await waitForBlockNumber(web3, event.blockNumber);
-            
+
             let organization;
             let subOrganization;
 
@@ -136,7 +136,7 @@ module.exports = (config, cached) => {
 
                     log.info('Parsed organization:', JSON.stringify(organization));
                     break;
-                
+
                 // Event fired when a Unit is created/changed
                 case "UnitCreated":
                     parentOrganization = await parseOrganization(
@@ -153,11 +153,11 @@ module.exports = (config, cached) => {
                     );
                     await cached.upsertOrgid(parentOrganization);
                     await cached.upsertOrgid(subOrganization);
-                    
+
                     log.info(JSON.stringify(parentOrganization));
                     log.info(JSON.stringify(subOrganization));
                     break;
-                
+
                 default:
                     log.debug(`this event do not have any reaction behavior`);
             }
@@ -335,9 +335,10 @@ module.exports = (config, cached) => {
                     ''
                 )
                 : null;
-            
-            isWebsiteProved = getTrustAssertsion(resolverResult, 'dns', '');
-            
+
+                isWebsiteProved = getTrustAssertsion(resolverResult, 'domain', '') ||
+                    getTrustAssertsion(resolverResult, 'dns', '');
+
             // SSL Trust clue
             isSslProved = website
                 ? await checkSslByUrl(website, name)
@@ -348,7 +349,7 @@ module.exports = (config, cached) => {
 
         // Overall Social Trust proof
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
-        
+
         // Counting total count of proofs
         const proofsQty = _.compact([isWebsiteProved, isSslProved, isSocialProved]).length;
 
@@ -416,7 +417,7 @@ module.exports = (config, cached) => {
                     orgid,
                     orgIdResolver
                 );
-                
+
                 log.debug(organization);
 
                 await cached.upsertOrgid(organization);
@@ -426,7 +427,7 @@ module.exports = (config, cached) => {
 
             if (organization.subsidiaries) {
                 log.info('PARSE SUBSIDIARIES:', JSON.stringify(organization.subsidiaries));
-                
+
                 for (let orgid of organization.subsidiaries) {
                     try {
                         let subOrganization = await parseOrganization(

@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer  = require('multer');
-const url = require('url');
+const didDocumentSchema = require('@windingtree/org.json-schema');
+const Ajv = require('ajv');
 const filenameSplitted = __filename.split(__filename[0]);
 const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.length - 3]}/${filenameSplitted[filenameSplitted.length - 1].replace('.js', '')}`);
 log.level = 'debug';
@@ -21,15 +22,19 @@ module.exports = function (rest, orgids_json) {
     const environment = orgids_json.environment();
     const baseUrl = environment.baseUrl;
 
-    // const baseUrl = (req => {
-    //     //url.format({ protocol: req.protocol, host: req.get('host'), pathname: '/' });
-    //     return 'https://staging-api.arbor.fm/';
-    // });
-    
-
-    router.post('/json', async (req, res) => {
-        const { address, orgidJson } = req.body;
+    router.post('/json', async (req, res, next) => {
         try {
+            const { address, orgidJson } = req.body;
+            const validator = new Ajv();
+            validator.validate(didDocumentSchema, orgidJson);
+
+            if (validator.errors) {
+                const validationError = new Error('ORG JSON Schema mismatch');
+                validationError.status = 400;
+                validationError.errors = validator.errors;
+                throw validationError;
+            }
+
             const uri = await orgids_json.saveJson(address, orgidJson, baseUrl);
             log.debug('json saved. uri', uri);
             const json = {
@@ -38,14 +43,13 @@ module.exports = function (rest, orgids_json) {
                     uri
                 }
             };
-            res.status(200).send(json)
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+            res.status(200).json(json);
+        } catch (error) {
+            return next(error);
         }
     });
 
-    router.post('/media', upload.single('media'), async (req, res) => {
+    router.post('/media', upload.single('media'), async (req, res, next) => {
         try {
             console.log(req.body);
             console.log(req.file);
@@ -61,9 +65,8 @@ module.exports = function (rest, orgids_json) {
                 }
             };
             res.status(200).send(json)
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            return res.status(code).send(json)
+        } catch (error) {
+            return next(error);
         }
     });
 

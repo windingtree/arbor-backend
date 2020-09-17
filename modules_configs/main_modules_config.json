@@ -2,6 +2,7 @@
   "modules": {
     "config": {
       "module": "./modules/config",
+      "dependencies": [],
       "parameters": {
         "impl": "config"
       }
@@ -24,6 +25,13 @@
     "smart_contract_connector": {
       "module": "./modules/smart_contract_connector",
       "dependencies": ["config", "cached"]
+    },
+    "stripe": {
+      "module": "./modules/stripe",
+      "dependencies": ["config", "models"],
+      "parameters": {
+        "model": true
+      }
     }
   }
 }

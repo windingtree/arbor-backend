@@ -7,7 +7,7 @@ module.exports = async (modules_config, predefinedModules) => {
     definedModules.modules_config = modules_config;
 
     const initModule = async (moduleName, moduleConfig, moduleDependencies) => {
-        // log.info(`Going to init module: ${moduleName}`);
+        log.info(`Going to init module: ${moduleName}`);
         log.debug('deps:', moduleDependencies);
 
         const module = (implArgs, moduleProperties) => {

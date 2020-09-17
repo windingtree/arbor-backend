@@ -7,20 +7,19 @@ log.level = 'debug';
 
 module.exports = function (rest, controller) {
 
-    router.get('/stats/connection', async (req, res) => {
+    router.get('/stats/connection', async (req, res, next) => {
         try {
             const json = {
                 connected: controller.isConnected(),
                 reconnection: controller.isReconnection()
             };
-            res.status(200).send(json); 
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            res.status(code).send(json);
+            res.status(200).send(json);
+        } catch (error) {
+            return next(error);
         }
     });
-    
-    router.post('/orgids/:address/refresh', async (req, res) => {
+
+    router.post('/orgids/:address/refresh', async (req, res, next) => {
         const { address } = req.params;
 
         try {
@@ -36,14 +35,13 @@ module.exports = function (rest, controller) {
                     ...orgId
                 }
             };
-            res.status(200).send(json);            
-        } catch (e) {
-            const {code, json} = rest.decorateError(e);
-            res.status(code).send(json);
+            res.status(200).send(json);
+        } catch (error) {
+            return next(error);
         }
     });
 
     rest.addRouter(['/api/v1/', router]);
 
-    return Promise.resolve({})
+    return Promise.resolve({});
 };
