@@ -182,17 +182,17 @@ module.exports = (config, models) => {
                 {
                     path: `https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${environment.etherscanKey}`,
                     safePath: 'https://api.etherscan.io/api?module=gastracker&action=gasoracle',
-                    resolver: response => web3.utils.toWei(String(parseInt(response.data.result.ProposeGasPrice)), 'gwei')
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.result.FastGasPrice)), 'gwei')
                 },
                 {
                     path: `https://www.etherchain.org/api/gasPriceOracle`,
                     safePath: 'https://www.etherchain.org/api/gasPriceOracle',
-                    resolver: response => web3.utils.toWei(String(parseInt(response.data.standard)), 'gwei')
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.fastest)), 'gwei')
                 },
                 {
                     path: `https://ethgasstation.info/api/ethgasAPI.json?api-key=${environment.defiPulseKey}`,
                     safePath: 'https://ethgasstation.info/api/ethgasAPI.json',
-                    resolver: response => web3.utils.toWei(String(parseInt(response.data.average / 10)), 'gwei')
+                    resolver: response => web3.utils.toWei(String(parseInt(response.data.fastest / 10)), 'gwei')
                 }
             ]);
             gasPriceCache = gasPrice;
@@ -480,28 +480,30 @@ module.exports = (config, models) => {
                         }
                     })
                     .on('error', async error => {
-                        try {
-                            log.error(`sendTransaction error: ${error.message}`);
-                            await stripe.paymentIntents.cancel(paymentIntentId);
-                            const err = new Error(
-                                `Payment has been cancelled: ${error.message}`
-                            );
-                            err.status = 400;
-                            reject(err);
-                            return;
-                        } catch (err) {
-                            log.error(`Error: ${err.message}`);
-                            await payment
-                                .update(
-                                    {
-                                        succeededEvent,
-                                        state: 'errored',
-                                        errors: [...errors, err.message]
-                                    }
-                                )
-                                .catch(reject);
-                            reject(err);
-                        }
+                        log.error(`sendTransaction error: ${error.message}`);
+                        reject(err);
+                        // try {
+                        //     log.error(`sendTransaction error: ${error.message}`);
+                        //     await stripe.paymentIntents.cancel(paymentIntentId);
+                        //     const err = new Error(
+                        //         `Payment has been cancelled: ${error.message}`
+                        //     );
+                        //     err.status = 400;
+                        //     reject(err);
+                        //     return;
+                        // } catch (err) {
+                        //     log.error(`Error: ${err.message}`);
+                        //     await payment
+                        //         .update(
+                        //             {
+                        //                 succeededEvent,
+                        //                 state: 'errored',
+                        //                 errors: [...errors, err.message]
+                        //             }
+                        //         )
+                        //         .catch(reject);
+                        //     reject(err);
+                        // }
                     });
             }
         );
