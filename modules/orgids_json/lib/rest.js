@@ -8,9 +8,9 @@ const log = require("log4js").getLogger(`${filenameSplitted[filenameSplitted.len
 log.level = 'debug';
 
 const fileFilter = function(req, file, cb) {
-    if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF|json|JSON)$/)) {
-        req.fileValidationError = 'Only images and JSON files are allowed!';
-        return cb(new Error('Only image files and JSON are allowed!'), false);
+    if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF|json|JSON|pdf|PDF)$/)) {
+        req.fileValidationError = 'File type not allowed!';
+        return cb(new Error(req.fileValidationError), false);
     }
     cb(null, true);
 };

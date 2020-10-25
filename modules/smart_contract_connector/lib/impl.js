@@ -7,7 +7,10 @@ const {
     getTrustAssertsion,
     getCurrentBlockNumber,
     checkSslByUrl,
-    SimpleQueue
+    SimpleQueue,
+    fetchDirectoriesIndex,
+    subscribeDirectoriesEvents,
+    unsubscribeDirectoriesEvents
 } = require('./utils');
 
 // Web3 Connection Guard
@@ -29,6 +32,7 @@ module.exports = (config, cached) => {
     let eventsSubscription;
     let isConnected = false;
     let isReconnection = false;
+    let dirsSubscriptions = [];
 
     // Start connection for events listener with guard
     connectionGuard(
@@ -37,6 +41,7 @@ module.exports = (config, cached) => {
         () => {
             isConnected = false;
             isReconnection = true;
+            unsubscribeDirectoriesEvents(dirsSubscriptions);
         },
         // Connection handler
         async _web3 => {
@@ -47,7 +52,8 @@ module.exports = (config, cached) => {
                     environment.orgidAddress
                 );
                 orgidContract = (await orgIdResolver.getOrgIdContract());
-                eventsSubscription = listenEvents(web3, orgidContract, orgIdResolver);
+                eventsSubscription = await listenEvents(web3, orgidContract, orgIdResolver);
+                dirsSubscriptions = await startDirsSubscriptions(web3, environment.directoryIndexAddress);
                 isConnected = true;
                 isReconnection = false;
             } catch (error) {
@@ -59,6 +65,25 @@ module.exports = (config, cached) => {
 
     // Queue for promises
     const queue = new SimpleQueue();
+
+    const startDirsSubscriptions = async (web3, directoryIndexAddress) => {
+        return;// @todo REMOVE after new directories feature will be enabled
+        try {
+            const directories = await fetchDirectoriesIndex(web3, directoryIndexAddress);
+            return subscribeDirectoriesEvents(web3, 'latest', directories, event => {
+                switch (event.event) {
+                    case 'OrganizationChallenged':
+                    case 'Dispute':
+                        // Send email to organization owner
+                        break;
+                    default:
+                        // Ignore all other events
+                }
+            });
+        } catch (error) {
+            log.error('Error during startDirsSubscriptions', error.toString());
+        }
+    };
 
     // Start Listening on all OrgId contract Events
     const listenEvents = async (web3, orgidContract, orgIdResolver) => {
