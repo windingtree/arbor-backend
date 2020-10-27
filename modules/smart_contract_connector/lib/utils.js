@@ -2021,6 +2021,12 @@ const fetchDirectoriesIndex = async (web3, indexAddress) => {
 };
 module.exports.fetchDirectoriesIndex = fetchDirectoriesIndex;
 
+const fetchDirectoryName = async (web3, address) => {
+  const dir = getArbDirContract(web3, address);
+  return dir.methods.getSegment().call();
+};
+module.exports.fetchDirectoryName = fetchDirectoryName;
+
 const subscribeDirectoriesEvents = (web3, fromBlock, directories, callback) => directories.map(address => {
     const dir = getArbDirContract(web3, address);
     const events = {}; // events log

@@ -10,6 +10,7 @@ const {
     checkSslByUrl,
     SimpleQueue,
     fetchDirectoriesIndex,
+    fetchDirectoryName,
     subscribeDirectoriesEvents,
     unsubscribeDirectoriesEvents
 } = require('./utils');
@@ -229,6 +230,7 @@ module.exports = (config, cached) => {
             let email;
             return subscribeDirectoriesEvents(web3, 'latest', directories, async event => {
                 try {
+                    let segment;
                     switch (event.event) {
                         case 'OrganizationChallenged':
                             // Send email to organization owner
@@ -253,6 +255,11 @@ module.exports = (config, cached) => {
                                     `organization/${event.returnValues._organization}`
                                 );
                             }
+                            segment = await fetchDirectoryName(web3, event.address);
+                            await cached.addDirectoryToOrganization(
+                                event.returnValues._organization,
+                                segment
+                            );
                             break;
                         case 'OrganizationRemoved':
                             // Send email to organization owner
@@ -265,6 +272,11 @@ module.exports = (config, cached) => {
                                     `organization/${event.returnValues._organization}`
                                 );
                             }
+                            segment = await fetchDirectoryName(web3, event.address);
+                            await cached.removeDirectoryFromOrganization(
+                                event.returnValues._organization,
+                                segment
+                            );
                             break;
                         case 'OrganizationRequestRemoved':
                             // Send email to organization owner
@@ -494,21 +506,22 @@ module.exports = (config, cached) => {
         // Retrieve Directory
         let directory = 'unknown';
 
-        if (orgidType === 'legalEntity') {
-            directory = 'legalEntity';
-        } else if (orgidType === 'organizationalUnit') {
-            directory = jsonContent.organizationalUnit.type;
-            // Directory should be an array
-            // But Database expects a string
-            if (Array.isArray(directory)) {
-                // Backward compatibility for Arbor BE
-                if (directory.length === 1) {
-                    directory = directory[0];
-                } else {
-                    directory = JSON.stringify(directory);
-                }
-            }
-        }
+        // @note This block is commented because from now directories list is formed on the base of Kleros managed directories
+        // if (orgidType === 'legalEntity') {
+        //     directory = 'legalEntity';
+        // } else if (orgidType === 'organizationalUnit') {
+        //     directory = jsonContent.organizationalUnit.type;
+        //     // Directory should be an array
+        //     // But Database expects a string
+        //     if (Array.isArray(directory)) {
+        //         // Backward compatibility for Arbor BE
+        //         if (directory.length === 1) {
+        //             directory = directory[0];
+        //         } else {
+        //             directory = JSON.stringify(directory);
+        //         }
+        //     }
+        // }
 
         // Retrieve name
         let name = 'Name is not defined';

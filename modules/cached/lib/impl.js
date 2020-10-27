@@ -12,21 +12,6 @@ module.exports = function (config, models) {
     const { currentEnvironment, environments } = config();
     const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 
-    const upsertOrgid = async (organizationPayload) => {
-        log.debug('[.]', chalk.blue('upsertOrgid') , JSON.stringify(organizationPayload));
-        let orgid;
-        try {
-            orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
-            log.debug('view created org');
-        } catch (e) {
-            log.warn('upsertOrgid error during orgid upsert:', e.toString());
-            log.debug('upsertOrgid error during orgid upsert:', e);
-            throw e.toString()
-        }
-
-        return orgid;
-    };
-
     const updateOrgidData = async (orgid, data) => {
         return await models.orgid.update(data, {
             where: {
@@ -40,10 +25,60 @@ module.exports = function (config, models) {
         if (orgid) {
             orgid = orgid.get();
             orgid.type = 'orgid';
-            orgid.orgJsonContent = orgid.orgJsonContent && orgid.orgJsonContent.toString ? orgid.orgJsonContent.toString() : orgid.orgJsonContent;
         }
 
         return orgid
+    };
+
+    const addDirectoryToOrganization = async (orgId, directory) => {
+        log.debug(`Add directory "${directory}" to the organization:`, orgId);
+        const organization = await getOrgId(orgId);
+        if (organization) {
+            let directories = organization.directory;
+            if (directories.match(/^\[[a-zA-Z0-9"', ]+\]/gm)) {
+                directories = JSON.parse(directories).map(d => d.toLowerCase());
+            } else {
+                directories = [directories];
+            }
+            directory = directory.toLowerCase();
+            if (!directories.includes(directory)) {
+                directories.push(directory);
+            }
+            organization.directory = JSON.stringify(directories);
+            await updateOrgidData(orgId, organization);
+        }
+    };
+
+    const removeDirectoryFromOrganization = async (orgId, directory) => {
+        log.debug(`Remove directory "${directory}" from the organization:`, orgId);
+        const organization = await getOrgId(orgId);
+        if (organization) {
+            let directories = organization.directory;
+            if (directories.match(/^\[[a-zA-Z0-9"', ]+\]/gm)) {
+                directories = JSON.parse(directories).map(d => d.toLowerCase());
+            } else {
+                directories = [directories];
+            }
+            directory = directory.toLowerCase();
+            directories = directories.filter(d => d !== directory);
+            organization.directory = JSON.stringify(directories);
+            await updateOrgidData(orgId, organization);
+        }
+    };
+
+    const upsertOrgid = async (organizationPayload) => {
+        log.debug('[.]', chalk.blue('upsertOrgid') , JSON.stringify(organizationPayload));
+        let orgid;
+        try {
+            orgid = await models.orgid.upsert(organizationPayload, { orgid: organizationPayload.orgid });
+            log.debug('view created org');
+        } catch (e) {
+            log.warn('upsertOrgid error during orgid upsert:', e.toString());
+            log.debug('upsertOrgid error during orgid upsert:', e);
+            throw e.toString()
+        }
+
+        return orgid;
     };
 
     const getOrgIdRaw = async (address) => {
@@ -307,6 +342,8 @@ module.exports = function (config, models) {
         getProfileDraft,
         getOrgIdsRaw,
         getOrgIds,
+        addDirectoryToOrganization,
+        removeDirectoryFromOrganization,
         environment: () => environment
     });
 };
