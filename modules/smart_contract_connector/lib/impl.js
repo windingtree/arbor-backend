@@ -181,10 +181,8 @@ module.exports = (config, cached) => {
                 <tr>
                     <td></td>
                     <td>
-                        <a href="${basePath}/${link}" target="_blank">
-                            <div class="button">
-                            ${basePath}/${link}
-                            </div>
+                        <a href="https://${basePath}/${link}" target="_blank">
+                            ${link}
                         </a>
                     </td>
                     <td></td>
@@ -194,6 +192,7 @@ module.exports = (config, cached) => {
         </html>`
         };
         await sgMail.send(msg);
+        log.debug('Email Sent:', email, title);
     };
 
     const getOrgEmail = async orgId => {
@@ -219,6 +218,8 @@ module.exports = (config, cached) => {
             email = emailContact ? emailContact.email : undefined;
         }
 
+        log.debug('Org Email:', orgId, email);
+
         return email;
     };
 
@@ -231,53 +232,54 @@ module.exports = (config, cached) => {
                     switch (event.event) {
                         case 'OrganizationChallenged':
                             // Send email to organization owner
-                            email = await getOrgEmail(event.event.returnValues._organization);
+                            email = await getOrgEmail(event.returnValues._organization);
                             if (email) {
                                 await sendEmail(
                                     email,
                                     'Organization has been challenged',
-                                    'Your organization has been challenged. You can see details and accept on the organization page.'
-                                    `organization/${event.event.returnValues._organization}`
+                                    'Your organization has been challenged. You can see details and accept on the organization page.',
+                                    `organization/${event.returnValues._organization}`
                                 );
                             }
                             break;
                         case 'OrganizationAdded':
                             // Send email to organization owner
-                            email = await getOrgEmail(event.event.returnValues._organization);
+                            email = await getOrgEmail(event.returnValues._organization);
                             if (email) {
                                 await sendEmail(
                                     email,
                                     'Organization has been added to the directory',
-                                    `Your organization has been added to the directory ${event.event.address}. You can see details and accept on the organization page.`,
-                                    `organization/${event.event.returnValues._organization}`
+                                    `Your organization has been added to the directory ${event.address}. You can see details and accept on the organization page.`,
+                                    `organization/${event.returnValues._organization}`
                                 );
                             }
                             break;
                         case 'OrganizationRemoved':
                             // Send email to organization owner
-                            email = await getOrgEmail(event.event.returnValues._organization);
+                            email = await getOrgEmail(event.returnValues._organization);
                             if (email) {
                                 await sendEmail(
                                     email,
                                     'Organization has been removed from the directory',
-                                    `Your organization has been removed from the directory ${event.event.address}. You can see details and accept on the organization page.`,
-                                    `organization/${event.event.returnValues._organization}`
+                                    `Your organization has been removed from the directory ${event.address}. You can see details and accept on the organization page.`,
+                                    `organization/${event.returnValues._organization}`
                                 );
                             }
                             break;
                         case 'OrganizationRequestRemoved':
                             // Send email to organization owner
-                            email = await getOrgEmail(event.event.returnValues._organization);
+                            email = await getOrgEmail(event.returnValues._organization);
                             if (email) {
                                 await sendEmail(
                                     email,
                                     'Organization adding request has been removed',
-                                    `Your request to the directory ${event.event.address} has been removed.`,
-                                    `directories/requests/${event.event.address}`
+                                    `Your request to the directory ${event.address} has been removed.`,
+                                    `directories/requests/${event.address}`
                                 );
                             }
                             break;
                         case 'Evidence':
+                            break;
                         default:
                             // Ignore all other events
                     }
