@@ -532,7 +532,7 @@ module.exports = (config, cached) => {
             name = jsonContent.organizationalUnit.name;
         }
 
-        // Retrieve country
+        // Retrieve country & logo
         let country;
 
         if (orgidType == 'legalEntity' && jsonContent.legalEntity.registeredAddress) {
@@ -547,11 +547,11 @@ module.exports = (config, cached) => {
         }
 
         // Retrieve logo
-        let logo;
-
-        if (jsonContent.media) {
-            logo = jsonContent.media.logo;
-        }
+        const logo = jsonContent.media && jsonContent.media.logo
+            ? jsonContent.media.logo // legacy path
+            : jsonContent[orgidType] && jsonContent[orgidType].media && jsonContent[orgidType].media.logo
+                ? jsonContent[orgidType].media.logo // compliant with schema
+                : undefined;
 
         // Facebook Trust clue
         const isSocialFBProved = getTrustAssertsion(resolverResult, 'social', 'facebook');
