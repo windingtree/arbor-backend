@@ -1,4 +1,5 @@
 const fs = require('fs');
+const IpfsHttpClient = require('ipfs-http-client');
 const { keccak256 } = require('js-sha3');
 const log = require('log4js').getLogger('Orgid_json');
 log.level = 'debug';
@@ -6,6 +7,8 @@ log.level = 'debug';
 module.exports = function (config) {
     const { currentEnvironment, environments } = config();
     const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
+    const ipfsStorageNodeUri = environment.ipfsStorageNode || 'https://ipfs.infura.io:5001'
+    const ipfsPinningNodesUris = environment.ipfsPinningNodes || ['https://api.thegraph.com/ipfs/api/v0/']
 
     const mkdir = async (path, options) => {
         return new Promise((resolve, reject) => {
@@ -19,6 +22,28 @@ module.exports = function (config) {
     const writeFile = async (dir, fileName, content) => {
         await mkdir(dir, {recursive: true});
         fs.writeFileSync(dir + fileName, content);
+    };
+
+    const storeIpfs = async (content) => {
+        // Store in IPFS
+        const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri)
+        let pin = await ipfsStorageClient.add(content, { 
+            hashAlg: 'keccak-256',
+            cidVersion: 1,
+            pin: true,
+        });
+
+        // Pin in alternative IPFS nodes
+        ipfsPinningNodesUris.forEach(uri => {
+            const ipfsPinningClient = IpfsHttpClient(uri);
+            try {
+                await ipfsPinningClient.pin.add(pin.cid);
+            } catch(e) {
+                log.warn(e);
+            }
+
+        });
+
     };
 
     const copyFromTemp = async (dir, fileName, content) => {
@@ -39,6 +64,7 @@ module.exports = function (config) {
         const dir = `uploads/${address}/${orgidJson.id ? `${orgidJson.id}/` : ''}`;
         const fileName = `${orgidJson.id ? '' : 'wizard-'}0x${keccak256(orgidJsonString)}.json`;
         await writeFile(dir, fileName, orgidJsonString);
+        await storeIpfs(orgidJsonString);
         return `${baseUrl}${dir}${fileName}`;
     };
 
