@@ -1,4 +1,5 @@
 const fs = require('fs');
+const Web3 = require('web3');
 const IpfsHttpClient = require('ipfs-http-client');
 const { keccak256 } = require('js-sha3');
 const log = require('log4js').getLogger('Orgid_json');
@@ -27,21 +28,21 @@ module.exports = function (config) {
     const storeIpfs = async (content) => {
         // Store in IPFS
         const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri)
-        let pin = await ipfsStorageClient.add(content, { 
+        let pin = await ipfsStorageClient.add(content, {
             hashAlg: 'keccak-256',
             cidVersion: 1,
             pin: true,
         });
+        log.debug('IPFS pin:', pin);
 
         // Pin in alternative IPFS nodes
-        ipfsPinningNodesUris.forEach(uri => {
+        ipfsPinningNodesUris.forEach(async uri => {
             const ipfsPinningClient = IpfsHttpClient(uri);
             try {
                 await ipfsPinningClient.pin.add(pin.cid);
             } catch(e) {
                 log.warn(e);
             }
-
         });
 
     };
