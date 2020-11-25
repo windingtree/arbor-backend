@@ -11,7 +11,7 @@ on:
 # This workflow contains a jobs for build, push and deploy service to k8s
 
 jobs:
-  
+
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -26,5 +26,5 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        repository: ogwindingtree/arbor-backend
+        repository: windingtree/arbor-backend
         push: false
