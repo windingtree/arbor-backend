@@ -8,6 +8,7 @@ const {
     OrgIdContract,
     addresses: OrgIdAddresses
 } = require('@windingtree/org.id');
+const { getBlock } = require('../../smart_contract_connector/lib/utils');
 const log = require('log4js').getLogger('Stripe');
 log.level = 'debug';
 
@@ -207,13 +208,15 @@ module.exports = (config, models) => {
         ethPrice = Math.ceil(Number(ethPrice) * 100);
         log.debug(`Current ether rate: ${gasPrice.toString()}`);
 
+        const latestBlock = await getBlock(web3);
+
         // Gas estimated for method execution
         let methodGas = await contract.methods[method]
             .apply(contract, args)
             .estimateGas({
                 from: recipient,
                 gasPrice: gasPrice.toString(),
-                gas: '12000000'
+                gas: latestBlock.gasLimit
             });
         methodGas = web3.utils.toBN(methodGas);
         log.debug(`Estimated gas for method: ${methodGas.toString()}`);

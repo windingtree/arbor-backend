@@ -41,7 +41,7 @@ const getCurrentBlockNumber = async web3 => {
         }
 
         blockNumber = await blockNumberRequest();
-        
+
         if (typeof blockNumber !== 'number') {
             await setTimeoutPromise(1000 + 1000 * parseInt(counter / 3));
         }
@@ -52,6 +52,63 @@ const getCurrentBlockNumber = async web3 => {
     return blockNumber;
 };
 module.exports.getCurrentBlockNumber = getCurrentBlockNumber;
+
+// Get block helper
+const getBlock = async (web3, typeOrNumber = 'latest', checkEmptyBlocks = true) => {
+    let counter = 0;
+    let block;
+
+    const isEmpty = block => checkEmptyBlocks
+        ? block.transactions.length === 0
+        : false;
+
+    const blockRequest = () => new Promise(resolve => {
+      const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
+      try {
+        web3.eth.getBlock(typeOrNumber, (error, result) => {
+          clearTimeout(blockNumberTimeout);
+
+          if (error) {
+              return resolve();
+          }
+
+          resolve(result);
+        });
+      } catch (error) {
+          // ignore errors due because of we will be doing retries
+          resolve(null);
+      }
+    });
+
+    do {
+      const isConnected = () => typeof web3.currentProvider.isConnected === 'function'
+        ? web3.currentProvider.isConnected()
+        : web3.currentProvider.connected;
+      if (!isConnected()) {
+        throw new Error(`Unable to fetch block "${typeOrNumber}": no connection`);
+      }
+
+      if (counter === 100) {
+          counter = 0;
+          throw new Error(
+            `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
+          );
+      }
+
+      block = await blockRequest();
+
+      if (!block) {
+          await setTimeoutPromise(parseInt(3000 + 1000 * counter / 5));
+      } else {
+        await setTimeoutPromise(2500);
+      }
+
+      counter++;
+    } while (!block || isEmpty(block));
+
+    return block;
+};
+module.exports.getBlock = getBlock;
 
 // Wait for a specific block number
 const waitForBlockNumber = async (web3, blockNumber) => {
@@ -77,7 +134,7 @@ module.exports.waitForBlockNumber = waitForBlockNumber;
 // orgid-resolver creation helper
 module.exports.createResolver = (web3, orgIdAddress) => {
     const resolver = new OrgIdResolver({
-        web3, 
+        web3,
         orgId: orgIdAddress
     });
     resolver.registerFetchMethod(httpFetchMethod);
@@ -97,7 +154,7 @@ module.exports.getTrustAssertsion = (resolverResult, type, claim) => {
 };
 
 const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) => {
-       
+
     if (link.indexOf('://') === -1) {
         link = `https://${link}`;
     }
@@ -107,14 +164,14 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
     try {
         let { hostname } = new URL(link);
         let isAuthorized = false;
-        
+
         const options = {
             host: hostname,
             method: 'get',
             path: '/',
-            agent: new https.Agent({ maxCachedSessions: 0 }) 
+            agent: new https.Agent({ maxCachedSessions: 0 })
         };
-        
+
         let legalNameFromServer;
 
         requestSsl = https.request(options, (response) => {
