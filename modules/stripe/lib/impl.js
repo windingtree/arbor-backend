@@ -8,7 +8,6 @@ const {
     OrgIdContract,
     addresses: OrgIdAddresses
 } = require('@windingtree/org.id');
-const { getBlock } = require('../../smart_contract_connector/lib/utils');
 const log = require('log4js').getLogger('Stripe');
 log.level = 'debug';
 
