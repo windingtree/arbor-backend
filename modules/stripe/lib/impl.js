@@ -8,7 +8,6 @@ const {
     OrgIdContract,
     addresses: OrgIdAddresses
 } = require('@windingtree/org.id');
-const { getBlock } = require('../../smart_contract_connector/lib/utils');
 const log = require('log4js').getLogger('Stripe');
 log.level = 'debug';
 
@@ -98,6 +97,62 @@ module.exports = (config, models) => {
         OrgIdContract.abi,
         OrgIdAddresses[environment.network === 'mainnet' ? 'main' : environment.network]
     );
+
+    // Get block helper
+    const getBlock = async (web3, typeOrNumber = 'latest', checkEmptyBlocks = true) => {
+        let counter = 0;
+        let block;
+
+        const isEmpty = block => checkEmptyBlocks
+            ? block.transactions.length === 0
+            : false;
+
+        const blockRequest = () => new Promise(resolve => {
+        const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
+        try {
+            web3.eth.getBlock(typeOrNumber, (error, result) => {
+            clearTimeout(blockNumberTimeout);
+
+            if (error) {
+                return resolve();
+            }
+
+            resolve(result);
+            });
+        } catch (error) {
+            // ignore errors due because of we will be doing retries
+            resolve(null);
+        }
+        });
+
+        do {
+        const isConnected = () => typeof web3.currentProvider.isConnected === 'function'
+            ? web3.currentProvider.isConnected()
+            : web3.currentProvider.connected;
+        if (!isConnected()) {
+            throw new Error(`Unable to fetch block "${typeOrNumber}": no connection`);
+        }
+
+        if (counter === 100) {
+            counter = 0;
+            throw new Error(
+                `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
+            );
+        }
+
+        block = await blockRequest();
+
+        if (!block) {
+            await setTimeoutPromise(parseInt(3000 + 1000 * counter / 5));
+        } else {
+            await setTimeoutPromise(2500);
+        }
+
+        counter++;
+        } while (!block || isEmpty(block));
+
+        return block;
+    };
 
     // Total gas cost calculation for the smart contract transaction and ether transfer
     const estimateGasCostForMethod = async (method, args, recipient) => {
