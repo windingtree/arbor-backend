@@ -8,6 +8,7 @@ const {
     OrgIdContract,
     addresses: OrgIdAddresses
 } = require('@windingtree/org.id');
+const { getBlock } = require('../../smart_contract_connector/lib/utils');
 const log = require('log4js').getLogger('Stripe');
 log.level = 'debug';
 
@@ -66,52 +67,6 @@ module.exports = (config, models) => {
     const setTimeoutPromise = timeout => new Promise(
         resolve => setTimeout(resolve, timeout)
     );
-
-    // Returns a block
-    const getBlock = async (web3, typeOrNumber) => {
-        let counter = 0;
-        let block;
-
-        const blockRequest = () => new Promise(resolve => {
-            const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
-
-            try {
-                web3.eth.getBlock(typeOrNumber, (error, result) => {
-                    clearTimeout(blockNumberTimeout);
-
-                    if (error) {
-                        return resolve(null);
-                    }
-
-                    resolve(result);
-                });
-            } catch (error) {
-                // ignore errors due because of we will be doing retries
-                resolve(null);
-            }
-        });
-
-        // Sometimes provider can return wrong result
-        // so we will do multiple tries
-        do {
-            if (counter === 30) {
-                throw new Error(
-                    `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
-                );
-            }
-
-            block = await blockRequest();
-
-            if (!block) {
-                // Increasing timeout before each time we going to start a new request
-                await setTimeoutPromise(1000 + 1000 * parseInt(counter / 3));
-            }
-
-            counter++;
-        } while (!block || block.transactions.length === 0);
-
-        return block;
-    };
 
     // Fetch current crypto price
     const fetchPrice = async (crypto = 'ethereum', fiat = 'usd') => {
