@@ -126,10 +126,6 @@ module.exports = (config, models) => {
         });
 
         do {
-            if (!web3.currentProvider.connected) {
-                throw new Error('Unable to fetch blockNumber: no connection');
-            }
-
             if (counter === 100) {
                 counter = 0;
                 throw new Error(
@@ -215,14 +211,15 @@ module.exports = (config, models) => {
         log.debug(`Current ether rate: ${gasPrice.toString()}`);
 
         const latestBlock = await getBlock(web3);
+        const gasLimit = parseInt(Number(latestBlock.gasLimit) * 0.95);
 
         // Gas estimated for method execution
         let methodGas = await contract.methods[method]
             .apply(contract, args)
             .estimateGas({
-                from: recipient,
+                from: environment.wtWallet,
                 gasPrice: gasPrice.toString(),
-                gas: latestBlock.gasLimit
+                gas: gasLimit
             });
         methodGas = web3.utils.toBN(methodGas);
         log.debug(`Estimated gas for method: ${methodGas.toString()}`);
