@@ -126,29 +126,26 @@ module.exports = (config, models) => {
         });
 
         do {
-        const isConnected = () => typeof web3.currentProvider.isConnected === 'function'
-            ? web3.currentProvider.isConnected()
-            : web3.currentProvider.connected;
-        if (!isConnected()) {
-            throw new Error(`Unable to fetch block "${typeOrNumber}": no connection`);
-        }
+            if (!web3.currentProvider.connected) {
+                throw new Error('Unable to fetch blockNumber: no connection');
+            }
 
-        if (counter === 100) {
-            counter = 0;
-            throw new Error(
-                `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
-            );
-        }
+            if (counter === 100) {
+                counter = 0;
+                throw new Error(
+                    `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
+                );
+            }
 
-        block = await blockRequest();
+            block = await blockRequest();
 
-        if (!block) {
-            await setTimeoutPromise(parseInt(3000 + 1000 * counter / 5));
-        } else {
-            await setTimeoutPromise(2500);
-        }
+            if (!block) {
+                await setTimeoutPromise(parseInt(3000 + 1000 * counter / 5));
+            } else {
+                await setTimeoutPromise(2500);
+            }
 
-        counter++;
+            counter++;
         } while (!block || isEmpty(block));
 
         return block;
