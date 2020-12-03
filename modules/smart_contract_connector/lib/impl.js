@@ -277,11 +277,19 @@ module.exports = (config, cached) => {
 
         // Retrieve name
         let name = 'Name is not defined';
+        // Retrieve logo
+        let logo;
 
         if (orgidType == 'legalEntity') {
             name = jsonContent.legalEntity.legalName;
+            if (jsonContent.legalEntity.media) {
+                logo = jsonContent.legalEntity.media.logo;
+            }
         } else if (orgidType == 'organizationalUnit') {
             name = jsonContent.organizationalUnit.name;
+            if (jsonContent.organizationalUnit.media) {
+                logo = jsonContent.organizationalUnit.media.logo;
+            }
         }
 
         // Retrieve country
@@ -296,13 +304,6 @@ module.exports = (config, cached) => {
 
         if (country && country.length !== 2) {
             country = '';
-        }
-
-        // Retrieve logo
-        let logo;
-
-        if (jsonContent.media) {
-            logo = jsonContent.media.logo;
         }
 
         // Facebook Trust clue
