@@ -42,7 +42,7 @@
     "express-http-proxy": "1.6.2",
     "stripe": "8.96.0",
     "@truffle/hdwallet-provider": "1.0.44",
-    "axios": "0.20.0",
+    "axios": "0.21.1",
     "moment": "2.28.0",
     "helmet": "4.1.1",
     "express-rate-limit": "5.1.3"
