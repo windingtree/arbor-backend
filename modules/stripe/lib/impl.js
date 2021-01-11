@@ -67,52 +67,6 @@ module.exports = (config, models) => {
         resolve => setTimeout(resolve, timeout)
     );
 
-    // Returns a block
-    const getBlock = async (web3, typeOrNumber) => {
-        let counter = 0;
-        let block;
-
-        const blockRequest = () => new Promise(resolve => {
-            const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
-
-            try {
-                web3.eth.getBlock(typeOrNumber, (error, result) => {
-                    clearTimeout(blockNumberTimeout);
-
-                    if (error) {
-                        return resolve(null);
-                    }
-
-                    resolve(result);
-                });
-            } catch (error) {
-                // ignore errors due because of we will be doing retries
-                resolve(null);
-            }
-        });
-
-        // Sometimes provider can return wrong result
-        // so we will do multiple tries
-        do {
-            if (counter === 30) {
-                throw new Error(
-                    `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
-                );
-            }
-
-            block = await blockRequest();
-
-            if (!block) {
-                // Increasing timeout before each time we going to start a new request
-                await setTimeoutPromise(1000 + 1000 * parseInt(counter / 3));
-            }
-
-            counter++;
-        } while (!block || block.transactions.length === 0);
-
-        return block;
-    };
-
     // Fetch current crypto price
     const fetchPrice = async (crypto = 'ethereum', fiat = 'usd') => {
         const result = await axios.get(
@@ -143,6 +97,55 @@ module.exports = (config, models) => {
         OrgIdContract.abi,
         OrgIdAddresses[environment.network === 'mainnet' ? 'main' : environment.network]
     );
+
+    // Get block helper
+    const getBlock = async (web3, typeOrNumber = 'latest', checkEmptyBlocks = true) => {
+        let counter = 0;
+        let block;
+
+        const isEmpty = block => checkEmptyBlocks
+            ? block.transactions.length === 0
+            : false;
+
+        const blockRequest = () => new Promise(resolve => {
+        const blockNumberTimeout = setTimeout(() => resolve(null), 2000);
+        try {
+            web3.eth.getBlock(typeOrNumber, (error, result) => {
+            clearTimeout(blockNumberTimeout);
+
+            if (error) {
+                return resolve();
+            }
+
+            resolve(result);
+            });
+        } catch (error) {
+            // ignore errors due because of we will be doing retries
+            resolve(null);
+        }
+        });
+
+        do {
+            if (counter === 100) {
+                counter = 0;
+                throw new Error(
+                    `Unable to fetch block "${typeOrNumber}": retries limit has been reached`
+                );
+            }
+
+            block = await blockRequest();
+
+            if (!block) {
+                await setTimeoutPromise(parseInt(3000 + 1000 * counter / 5));
+            } else {
+                await setTimeoutPromise(2500);
+            }
+
+            counter++;
+        } while (!block || isEmpty(block));
+
+        return block;
+    };
 
     // Total gas cost calculation for the smart contract transaction and ether transfer
     const estimateGasCostForMethod = async (method, args, recipient) => {
@@ -207,13 +210,16 @@ module.exports = (config, models) => {
         ethPrice = Math.ceil(Number(ethPrice) * 100);
         log.debug(`Current ether rate: ${gasPrice.toString()}`);
 
+        const latestBlock = await getBlock(web3);
+        const gasLimit = parseInt(Number(latestBlock.gasLimit) * 0.95);
+
         // Gas estimated for method execution
         let methodGas = await contract.methods[method]
             .apply(contract, args)
             .estimateGas({
-                from: recipient,
+                from: environment.wtWallet,
                 gasPrice: gasPrice.toString(),
-                gas: '12000000'
+                gas: gasLimit
             });
         methodGas = web3.utils.toBN(methodGas);
         log.debug(`Estimated gas for method: ${methodGas.toString()}`);

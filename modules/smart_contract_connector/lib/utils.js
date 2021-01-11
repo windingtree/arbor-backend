@@ -1788,6 +1788,7 @@ const getCurrentBlockNumberOLD = async web3 => {
 };
 module.exports.getCurrentBlockNumber = getCurrentBlockNumber;
 
+
 // Wait for a specific block number
 const waitForBlockNumber = async (web3, blockNumber) => {
     let currentBlockNumber = 0;
