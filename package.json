@@ -67,9 +67,9 @@
     "start": "node server.js",
     "start:dev": "NODE_ENV=dev node server.js",
     "mysql": "docker-compose -f ./docker-compose.dev.yaml up",
+    "ipfs:start:nodaemon": "docker-compose -f ./docker-compose.ipfs.yaml up",
     "ipfs:start": "docker-compose -f ./docker-compose.ipfs.yaml up -d",
     "ipfs:stop": "docker-compose -f ./docker-compose.ipfs.yaml down",
-    "ipfs:build": "docker-compose -f ./docker-compose.ipfs.yaml build --no-cache",
     "ipfs:exec": "docker exec ipfs_host ipfs"
   },
   "engines": {
