@@ -26,3 +26,5 @@ docker-compose-resolved.yaml
 .gitsecret/envs/develop
 .gitsecret/envs/master
 temp
+.ipfs
+.ipfs-export
