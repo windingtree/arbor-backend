@@ -44,7 +44,9 @@ module.exports = (config, cached) => {
         () => {
             isConnected = false;
             isReconnection = true;
-            unsubscribeDirectoriesEvents(dirsSubscriptions);
+            if (environment.directoryIndexAddress) {
+                unsubscribeDirectoriesEvents(dirsSubscriptions);
+            }
         },
         // Connection handler
         async _web3 => {
@@ -56,7 +58,9 @@ module.exports = (config, cached) => {
                 );
                 orgidContract = (await orgIdResolver.getOrgIdContract());
                 eventsSubscription = await listenEvents(web3, orgidContract, orgIdResolver);
-                dirsSubscriptions = await startDirsSubscriptions(web3, environment.directoryIndexAddress);
+                if (environment.directoryIndexAddress) {
+                    dirsSubscriptions = await startDirsSubscriptions(web3, environment.directoryIndexAddress);
+                }
                 isConnected = true;
                 isReconnection = false;
             } catch (error) {
