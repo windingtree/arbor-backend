@@ -23,7 +23,9 @@
 
       "*___jb_tmp___",
       "modules/**/test/**_test.js",
-      "pm2/**--dev.json"
+      "pm2/**--dev.json",
+      ".ipfs",
+      ".ipfs-export"
     ],
     "output": "~/.pm2/logs/server--dev-out.log",
     "error":  "~/.pm2/logs/server--dev-error.log",
