@@ -1,7 +1,7 @@
 const Joi = require('@hapi/joi');
 const express = require('express');
 const router = express.Router();
-const filenameSplitted = __filename.split(__filename[0]);
+// const filenameSplitted = __filename.split(__filename[0]);
 const log = require("log4js").getLogger('rest');
 log.level = 'debug';
 
@@ -16,6 +16,19 @@ module.exports = function (rest, controller) {
             res.status(200).send(json);
         } catch (error) {
             return next(error);
+        }
+    });
+
+    router.get('/rooms/hotel/:hotelId', async (req, res, next) => {
+        const { hotelId } = req.params;
+
+        try {
+            const profile = await controller.fetchHotelProfile(hotelId);
+            res.status(200).send(profile);
+        } catch (error) {
+            const externalError = new Error(error.message);
+            externalError.code = 502;
+            return next(externalError);
         }
     });
 

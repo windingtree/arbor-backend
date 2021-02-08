@@ -12,7 +12,9 @@ const {
     fetchDirectoriesIndex,
     fetchDirectoryName,
     subscribeDirectoriesEvents,
-    unsubscribeDirectoriesEvents
+    unsubscribeDirectoriesEvents,
+    createToken,
+    httpRequest
 } = require('./utils');
 
 // Web3 Connection Guard
@@ -698,11 +700,45 @@ module.exports = (config, cached) => {
         }
     };
 
+    const fetchHotelProfile = async hotelId => {
+        const {
+            windingTreeApiKey,
+            windingTreeOrgId,
+            roomsOrgId,
+            roomsBasePath
+        } = environment;
+
+        const wtToken = createToken(
+            `-----BEGIN EC PRIVATE KEY-----
+${windingTreeApiKey}
+-----END EC PRIVATE KEY-----`,
+            `did:orgid:${windingTreeOrgId}`,
+            'key1',
+            `did:orgid:${roomsOrgId}`,
+            '[]',
+            '1 hour'
+        );
+
+        return httpRequest(
+            roomsBasePath,
+            `/hotel/${hotelId}`,
+            'GET',
+            {},
+            {
+              method: 'headers',
+              data: {
+                'Authorization': `Bearer ${wtToken}`
+              }
+            }
+        );
+    };
+
     return Promise.resolve({
         isConnected: () => isConnected,
         isReconnection: () => isReconnection,
         scrapeOrganizations,
         listenEvents,
+        fetchHotelProfile,
         refreshOrganization: async (address) => refreshOrganization(
             web3,
             orgidContract,
