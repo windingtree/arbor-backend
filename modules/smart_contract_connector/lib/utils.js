@@ -2128,7 +2128,7 @@ const httpRequest = async (
   auth
 ) => {
   const url = `${baseURL}${apiPath}`;
-  const timeout = 5000;
+  const timeout = 20000;
 
   // COnfigure connection timeout handler
   const cancelTokenSource = axios.CancelToken.source();
