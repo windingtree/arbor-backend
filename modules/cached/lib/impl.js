@@ -328,6 +328,85 @@ module.exports = function (config, models) {
         return response;
     };
 
+    const saveTrustedPerson = (ipfs, orgId, name, type, value, expire) => models.trustedPersons.create({
+        ipfs, orgId, name, type, value, expire
+    });
+
+    const getPersonsByOrgId = async orgId => {
+        const records = await models.trustedPersons.findAll({
+            where: {
+                orgId: {
+                    [Op.eq]: orgId
+                },
+                expire: {
+                    [Op.gte]: new Date()
+                }
+            }
+        });
+
+        return Object.entries(
+            records.reduce(
+                (a, v) => {
+                    if (!Array.isArray(a[v.ipfs])) {
+                        a[v.ipfs] = [];
+                    }
+                    a[v.ipfs].push(v);
+                    return a;
+                },
+                {}
+            )
+        )
+        .reduce(
+            (a, v) => {
+                a.push({
+                    ipfs: v[0],
+                    name: v[1][0].name,
+                    accounts: v[1].map(({ type, value }) => ({
+                        type,
+                        value
+                    })),
+                    expire: v[1][0].expire
+                });
+                return a;
+            },
+            []
+        );
+    }
+
+    const getPersonByAccountType = async (accountType, value) => {
+        const records = await models.trustedPersons.findAll({
+            where: {
+                [Op.and]: [
+                    {
+                        type: {
+                            [Op.eq]: accountType
+                        }
+                    },
+                    {
+                        value: {
+                            [Op.eq]: value
+                        }
+                    },
+                    {
+                        expire: {
+                            [Op.gte]: new Date()
+                        }
+                    }
+                ]
+            }
+        });
+
+        return records;
+    };
+
+    const deletePersonByIpfsHash = ipfsHash => models.trustedPersons.destroy({
+        where: {
+            ipfs: {
+                [Op.eq]: ipfsHash
+            }
+        }
+    });
+
     return Promise.resolve({
         upsertOrgid,
         updateOrgidData,
@@ -344,6 +423,10 @@ module.exports = function (config, models) {
         getOrgIds,
         addDirectoryToOrganization,
         removeDirectoryFromOrganization,
+        saveTrustedPerson,
+        getPersonsByOrgId,
+        getPersonByAccountType,
+        deletePersonByIpfsHash,
         environment: () => environment
     });
 };

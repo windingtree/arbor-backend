@@ -1,6 +1,7 @@
 const https = require('https');
 const { OrgIdResolver, httpFetchMethod } = require('@windingtree/org.id-resolver');
 const { JWK, JWT } = require('jose');
+const ethers = require('ethers');
 const axios = require('axios');
 // const dns = require('dns');
 const log = require('log4js').getLogger('smart_contracts_connector:utils');
@@ -2216,3 +2217,127 @@ const httpRequest = async (
   }
 };
 module.exports.httpRequest = httpRequest;
+
+const toChecksObject = checks => checks.reduce(
+  (a, {
+    type,
+    passed,
+    errors = [],
+    warnings = []
+  }) => {
+    a = {
+      ...a,
+      [type]: {
+        passed,
+        errors,
+        warnings
+      }
+    };
+    return a;
+  }, {}
+);
+
+// Verify token
+const verifyToken = async (orgIdResolver, token) => {
+
+  // If passed headers object
+  // then extract token from authorization header
+  if (typeof token === 'object') {
+
+    if (!token.authorization) {
+      throw createError(
+        'Authorization missing',
+        403
+      );
+    }
+
+    let [ type, authToken ] = token.authorization.split(' ');
+
+    if (type !== 'Bearer') {
+      throw createError(
+        'Unknown authorization method',
+        403
+      );
+    }
+
+    token = authToken;
+  }
+
+  const decodedToken = JWT.decode(token, {
+      complete: true
+  });
+  const { payload: { exp, aud, iss } } = decodedToken;
+
+  // Issuer should be defined
+  if (!iss || iss === '') {
+      throw createError(
+          'Token is missing issuing ORGiD',
+          403
+      );
+  }
+
+  // Resolve did to didDocument
+  const { did } = iss.match(/(?<did>did:orgid:0x\w{64})(?:#{1})?(?<fragment>\w+)?/).groups;
+  const didResult = await orgIdResolver.resolve(did);
+  const checks = toChecksObject(didResult.checks);
+
+  // didDocument should be resolved
+  if (!checks.DID_DOCUMENT.passed) {
+      throw createError(
+          checks.DID_DOCUMENT.errors.join('; '),
+          403
+      );
+  }
+
+  // Organization should not be disabled
+  if (!didResult.organization.isActive) {
+      throw createError(
+          `Organization: ${didResult.organization.orgId} is disabled`,
+          403
+      );
+  }
+
+  // Validate signature of the organization owner or director
+  const lastPeriod = token.lastIndexOf('.');
+  const jwtMessage = token.substring(0, lastPeriod);
+  let rawSign = decodedToken.signature
+      .toString()
+      .replace('-', '+')
+      .replace('_', '/');
+  const signatureB16 = Buffer
+      .from(
+          rawSign,
+          'base64'
+      )
+      .toString('hex');
+
+  const hashedMessage = ethers.utils.hashMessage(jwtMessage);
+  const signingAddress = ethers.utils.recoverAddress(hashedMessage, `0x${signatureB16}`);
+
+  // Signer address should be an owner address or director address
+  // and director have to be confirmed
+  if (
+      ![
+          didResult.organization.owner,
+          ...(didResult.organization.director !== '0x0000000000000000000000000000000000000000'
+              && didResult.organization.isDirectorshipAccepted
+              ? [didResult.organization.director]
+              : []
+          )
+      ].includes(signingAddress)
+  ) {
+      throw createError(
+          'Token is signed by unknown key',
+      403);
+  }
+
+  return decodedToken;
+};
+module.exports.verifyToken = verifyToken;
+
+const createError = (message, code) => {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+};
+module.exports.createError = createError;

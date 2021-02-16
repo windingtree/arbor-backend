@@ -25,13 +25,15 @@ module.exports = function (config) {
         fs.writeFileSync(dir + fileName, content);
     };
 
-    const storeIpfs = async (content) => {
+    const storeIpfs = async (content, noKeccak) => {
         // Store in IPFS
         const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri)
         let pin = await ipfsStorageClient.add(content, {
-            hashAlg: 'keccak-256',
-            cidVersion: 1,
-            pin: true,
+            ...(!noKeccak ? {
+                hashAlg: 'keccak-256',
+                cidVersion: 1
+            } : {}),
+            pin: true
         });
         log.debug('IPFS pin:', pin);
 
@@ -45,6 +47,12 @@ module.exports = function (config) {
             }
         });
 
+        return pin;
+    };
+
+    const removeIpfs = path => {
+        const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri);
+        return ipfsStorageClient.pin.rm(path);
     };
 
     const copyFromTemp = async (dir, fileName, content) => {
@@ -85,6 +93,8 @@ module.exports = function (config) {
     return Promise.resolve({
         saveJson,
         saveMedia,
+        storeIpfs,
+        removeIpfs,
         environment: () => environment
     });
 };

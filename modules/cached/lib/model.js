@@ -140,7 +140,7 @@ module.exports = function (sequelize) {
             timestamps: true,
         }
     );
-    
+
     // Drafts table
     const drafts = sequelize.define('drafts',
         {
@@ -175,5 +175,34 @@ module.exports = function (sequelize) {
         }
     );
 
-    return [orgid, stats, drafts];
+    // Trusted Persons
+    const trustedPersons = sequelize.define(
+        'trustedPersons',
+        {
+            ipfs: {
+                type: Sequelize.STRING,
+                primaryKey: true
+            },
+            orgId: {
+                type: Sequelize.STRING
+            },
+            name: {
+                type: Sequelize.STRING
+            },
+            type: {
+                type: Sequelize.STRING
+            },
+            value: {
+                type: Sequelize.STRING
+            },
+            expire: {
+                type: Sequelize.DATE
+            }
+        },
+        {
+            timestamps: false,
+        }
+    );
+
+    return [orgid, stats, drafts, trustedPersons];
 };

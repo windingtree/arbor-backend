@@ -26,7 +26,7 @@ log.level = 'debug';
 // Constants
 const orgid0x = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-module.exports = (config, cached) => {
+module.exports = (config, cached, orgidsjson) => {
     const { currentEnvironment, environments } = config();
     const environment = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
     sgMail.setApiKey(environment.sendgridApiKey);
@@ -745,6 +745,10 @@ ${windingTreeApiKey}
             address,
             orgIdResolver
         ),
-        cached
+        cached,
+        orgIdResolver: () => orgIdResolver,
+        web3: () => web3,
+        storeIpfs: orgidsjson.storeIpfs,
+        removeIpfs: orgidsjson.removeIpfs
     });
 };
