@@ -2266,7 +2266,15 @@ const verifyToken = async (orgIdResolver, token) => {
   const decodedToken = JWT.decode(token, {
       complete: true
   });
-  const { payload: { exp, aud, iss } } = decodedToken;
+  const { payload: { exp, iss } } = decodedToken;
+
+  // Token should not be expired
+  if (exp < (Date.now() / 1000)) {
+    throw createError(
+          'Token is expired',
+          403
+      );
+  }
 
   // Issuer should be defined
   if (!iss || iss === '') {

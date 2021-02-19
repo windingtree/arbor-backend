@@ -98,7 +98,11 @@ mysql --user=root --password
 Enter the password for root (Default is 'root') Finally Run:
 
 ```
-ALTER USER 'arboruser' IDENTIFIED WITH mysql_native_password BY 'arborpassword';
+mysql> CREATE USER 'localuser'@'%' IDENTIFIED BY '<password>';
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'localuser'@'%';
+
 ```
 
 ## Seed database
