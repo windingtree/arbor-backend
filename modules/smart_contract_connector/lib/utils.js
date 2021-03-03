@@ -1895,6 +1895,9 @@ const checkSslByUrl = (link, expectedLegalName) => new Promise(async (resolve) =
                 resolve(false);
             }
         });
+        requestSsl.on('error', (e) => {
+          console.error('HTTPS ERROR:', e);
+        });
         requestSsl.end();
     } catch (e) {
         log.debug('checkSslByUrl [ERROR]', e.toString());

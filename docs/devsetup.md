@@ -111,6 +111,14 @@ mysql> GRANT ALL PRIVILEGES ON *.* TO 'localuser'@'%';
 $ npx sequelize-cli db:migrate --url 'mysql:arboruser:arborpassword@localhost:3306/arbordbnew'
 ```
 
+or
+
+```
+export NODE_ENV=<env:production|development>
+npx sequelize-cli db:migrate
+
+```
+
 ## Scrap OrgId data
 
 ```
