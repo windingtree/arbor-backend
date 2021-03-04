@@ -13,7 +13,11 @@ module.exports = function (config, modules_config) {
         host: DBConfig.host,
         dialect: DBConfig.dialect,
         logging: DBConfig.logging,
-        operatorsAliases: 0
+        operatorsAliases: 0,
+        define: {
+            charset: 'utf8mb4',
+            collate: 'utf8mb4_unicode_ci'
+        }
     };
     if (DBConfig.dialectOptions) {
         dbOptions.dialectOptions = DBConfig.dialectOptions;

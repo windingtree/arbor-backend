@@ -29,3 +29,4 @@ package-lock.json
 temp
 .ipfs
 .ipfs-export
+config
