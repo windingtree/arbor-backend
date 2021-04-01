@@ -116,7 +116,9 @@ module.exports = cfg => {
         allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
         exposedHeaders: 'Content-Range,X-Content-Range'
     };
-    app.use(cors(corsOptions));
+    if (!['dev', 'development'].includes(process.env.NODE_ENV)) {
+        app.use(cors(corsOptions));
+    }
 
     app.use('/uploads', express.static('uploads'));
 
