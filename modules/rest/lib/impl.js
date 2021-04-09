@@ -109,8 +109,14 @@ module.exports = cfg => {
     }));
 
     // CORS
+    let origin = []
+    if (environment.corsAllowList && environment.corsAllowList.length) {
+        origin = origin.concat(environment.corsAllowList)
+    }
+    origin.push(/\.vercel\.app$/)
+
     const corsOptions = {
-        origin: environment.corsAllowList || false,
+        origin: origin,
         optionsSuccessStatus: 200,
         methods: 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
         allowedHeaders: 'Origin,X-Requested-With,Content-Type,Accept,Authorization',
