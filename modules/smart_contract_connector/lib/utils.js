@@ -1,5 +1,9 @@
 const https = require('https');
-const { OrgIdResolver, httpFetchMethod } = require('@windingtree/org.id-resolver');
+const {
+  OrgIdResolver,
+  httpFetchMethod,
+  twitterFetchMethod
+} = require('@windingtree/org.id-resolver');
 const { JWK, JWT } = require('jose');
 const ethers = require('ethers');
 const axios = require('axios');
@@ -1839,10 +1843,13 @@ const waitForBlockNumber = async (web3, blockNumber) => {
 module.exports.waitForBlockNumber = waitForBlockNumber;
 
 // orgid-resolver creation helper
-module.exports.createResolver = (web3, orgIdAddress) => {
+module.exports.createResolver = (web3, orgIdAddress, options = {}) => {
     const resolver = new OrgIdResolver({
-        web3,
-        orgId: orgIdAddress
+      web3,
+      orgId: orgIdAddress
+    });
+    resolver.registerSocialFetchMethod(twitterFetchMethod, {
+      key: options.twitterKey
     });
     resolver.registerFetchMethod(httpFetchMethod);
     return resolver;

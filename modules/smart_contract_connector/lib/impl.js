@@ -56,7 +56,10 @@ module.exports = (config, cached, orgidsjson) => {
                 web3 = _web3;
                 orgIdResolver = createResolver(
                     web3,
-                    environment.orgidAddress
+                    environment.orgidAddress,
+                    {
+                        twitterKey: environment.twitterKey
+                    }
                 );
                 orgidContract = (await orgIdResolver.getOrgIdContract());
                 eventsSubscription = await listenEvents(web3, orgidContract, orgIdResolver);
