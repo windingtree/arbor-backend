@@ -1,6 +1,6 @@
 {
   "name": "arbor-backend",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "dependencies": {
     "@hapi/joi": "17.1.1",
@@ -76,5 +76,8 @@
   },
   "engines": {
     "node": "10.x"
+  },
+  "resolutions": {
+    "web-encoding": "1.1.3"
   }
 }
