@@ -56,9 +56,10 @@ module.exports = (config, cached, orgidsjson) => {
                 web3 = _web3;
                 orgIdResolver = createResolver(
                     web3,
-                    environment.orgidAddress,
                     {
-                        twitterKey: environment.twitterKey
+                        orgIdAddress: environment.orgidAddress,
+                        twitterKey: environment.twitterKey,
+                        authorizedTrustProofsIssuers: environment.authorizedTrustProofsIssuers
                     }
                 );
                 orgidContract = (await orgIdResolver.getOrgIdContract());

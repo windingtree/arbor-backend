@@ -1843,10 +1843,11 @@ const waitForBlockNumber = async (web3, blockNumber) => {
 module.exports.waitForBlockNumber = waitForBlockNumber;
 
 // orgid-resolver creation helper
-module.exports.createResolver = (web3, orgIdAddress, options = {}) => {
+module.exports.createResolver = (web3, options = {}) => {
     const resolver = new OrgIdResolver({
       web3,
-      orgId: orgIdAddress
+      orgId: options.orgIdAddress,
+      authorizedTrustProofsIssuers: options.authorizedTrustProofsIssuers
     });
     resolver.registerSocialFetchMethod(twitterFetchMethod, {
       key: options.twitterKey
