@@ -75,6 +75,6 @@
     "ipfs:exec": "docker exec ipfs_host ipfs"
   },
   "engines": {
-    "node": "12.x"
+    "node": ">=10.x"
   }
 }
