@@ -574,7 +574,7 @@ module.exports = (config, cached, orgidsjson) => {
         const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
 
         // Telegram!!! (uses Instagram property as workaround)
-        const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 'telegram');
+        const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 't.me');
 
         // Web-site Trust clue
         let website;
