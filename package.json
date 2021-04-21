@@ -1,6 +1,6 @@
 {
   "name": "arbor-backend",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "private": true,
   "dependencies": {
     "@hapi/joi": "17.1.1",
@@ -9,7 +9,7 @@
     "@types/express": "4.17.8",
     "@types/jest": "26.0.13",
     "@windingtree/org.id": "1.1.5",
-    "@windingtree/org.id-resolver": "2.3.4",
+    "@windingtree/org.id-resolver": "2.4.0",
     "@windingtree/org.json-schema": "0.3.4",
     "ajv": "6.12.6",
     "axios": "0.21.1",
