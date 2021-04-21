@@ -570,12 +570,11 @@ module.exports = (config, cached, orgidsjson) => {
         // Twitter Trust clue
         const isSocialTWProved = getTrustAssertsion(resolverResult, 'social', 'twitter');
 
-        // Instagram Trust clue
-        const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 'instagram');
-        console.log(JSON.stringify({ resolverResult, isSocialIGProved }, null, 2))
-
         // Linkedin Trust clue
         const isSocialLNProved = getTrustAssertsion(resolverResult, 'social', 'linkedin');
+
+        // Telegram!!! (uses Instagram property as workaround)
+        const isSocialIGProved = getTrustAssertsion(resolverResult, 'social', 'telegram');
 
         // Web-site Trust clue
         let website;
@@ -608,6 +607,12 @@ module.exports = (config, cached, orgidsjson) => {
 
         // Overall Social Trust proof
         const isSocialProved = isSocialFBProved || isSocialTWProved || isSocialIGProved || isSocialLNProved;
+        console.log('Proved:', {
+            isSocialFBProved,
+            isSocialTWProved,
+            isSocialIGProved,
+            isSocialLNProved
+        })
 
         // Counting total count of proofs
         const proofsQty = _.compact([isWebsiteProved, isSslProved, isSocialProved]).length;
@@ -615,7 +620,7 @@ module.exports = (config, cached, orgidsjson) => {
         // Retrieve the subsidiaries (if exists)
         let subsidiaries = await getUnits(orgidContract, orgid);
 
-        // Retrurn all the organization details
+        // Return all the organization details
         return {
             orgid,
             owner,

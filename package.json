@@ -1,6 +1,6 @@
 {
   "name": "arbor-backend",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "private": true,
   "dependencies": {
     "@hapi/joi": "17.1.1",
