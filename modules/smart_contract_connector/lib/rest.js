@@ -117,6 +117,15 @@ module.exports = function (rest, controller) {
         }
     });
 
+    router.get('/trustedPerson', async (req, res, next) => {
+        try {
+            const person = await controller.cached.getAllPersons();
+            res.status(200).send(person);
+        } catch (error) {
+            return next(error);
+        }
+    });
+
     router.delete('/trustedPerson/:ipfs', async (req, res, next) => {
         const orgIdResolver = controller.orgIdResolver();
         const {

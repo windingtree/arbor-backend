@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'dev';
 const axios = require('axios');
 const IpfsHttpClient = require('ipfs-http-client');
 const { urlSource } = IpfsHttpClient;
@@ -6,12 +7,16 @@ const {
     OrgIdContract,
     addresses
 } = require('@windingtree/org.id');
-const config = require('../../modules/config/lib/3rd-party.json');
+const {
+    environments,
+    currentEnvironment
+} = require('../../modules/config/lib/3rd-party.json');
 const { getDeepValue } = require('./object');
 const {
     network,
-    provider
-} = config.environments[config.currentEnvironment];
+    provider,
+    baseUrl
+} = environments[process.env.NODE_ENV === 'dev' ? 'development' : currentEnvironment];
 const orgIdAddress = addresses[network.replace('mainnet', 'main')];
 
 // Web setup
@@ -22,6 +27,7 @@ const orgIdContract = new web3.eth.Contract(
 );
 
 // IPFS client setup
+const oldIpfsNode = 'https://staging-ipfs.marketplace.windingtree.com';
 const ipfsStorageNode = 'https://staging-ipfs.marketplace.windingtree.com'; // Use an actual IPFS server host here
 const ipfsStorageClient = IpfsHttpClient(ipfsStorageNode);
 
@@ -31,6 +37,7 @@ const uris = [
     'arbor.fm'
 ].join('|');
 
+// Move all files from the http storage to the new IPFS server
 const main = async () => {
     try {
         const organizations = await orgIdContract.methods
@@ -103,13 +110,37 @@ const main = async () => {
         ))).filter(file => file);
         // console.log(`Deployed files: ${deployedFiles.length}`);
         console.log(deployedFiles.map(file => file.jsonRewriteRule).join('\n'));
-        console.log(deployedFiles.map(file => file.logoRewriteRule ? file.logoRewriteRule : null)
-            .filter(rule => rule)
-            .join('\n'));
+        console.log(
+            deployedFiles
+                .map(file => file.logoRewriteRule ? file.logoRewriteRule : null)
+                .filter(rule => rule)
+                .join('\n')
+        );
 
     } catch (error) {
         console.log(error);
     }
 };
 
+// Move all trusted persons pins to the new IPFS server
+const trustedPersons = async () => {
+    try {
+        const tpResult = await axios.get(`${baseUrl}api/v1/trustedPerson`);
+        await Promise.all(tpResult.data.map(
+            async p => {
+                try {
+                    await ipfsStorageClient.add(
+                        urlSource(`${oldIpfsNode}/ipfs/${p.ipfs}`)
+                    );
+                } catch (error) {
+                    // console.log(`${error.message}`);
+                }
+            }
+        ));
+    } catch (error) {
+        // console.log(`${error.message}`);
+    }
+};
+
+trustedPersons();
 main();

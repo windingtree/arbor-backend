@@ -399,6 +399,8 @@ module.exports = function (config, models) {
         return records;
     };
 
+    const getAllPersons = () => models.trustedPersons.findAll({});
+
     const deletePersonByIpfsHash = ipfsHash => models.trustedPersons.destroy({
         where: {
             ipfs: {
@@ -426,6 +428,7 @@ module.exports = function (config, models) {
         saveTrustedPerson,
         getPersonsByOrgId,
         getPersonByAccountType,
+        getAllPersons,
         deletePersonByIpfsHash,
         environment: () => environment
     });
