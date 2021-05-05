@@ -100,7 +100,7 @@ module.exports = function (config) {
         let ipfsPath;
 
         if (environment.returnIpfsLink) {
-            ipfsPath = storeMediaToIpfs(`${dir}${fileName}`);
+            ipfsPath = storeMediaToIpfs(file.path);
         }
 
         //${keccak256(file)}
