@@ -80,8 +80,13 @@ module.exports = function (config) {
         const dir = `uploads/${address}/${orgidJson.id ? `${orgidJson.id}/` : ''}`;
         const fileName = `${orgidJson.id ? '' : 'wizard-'}0x${keccak256(orgidJsonString)}.json`;
         await writeFile(dir, fileName, orgidJsonString); // Just as backup
-        const path = await storeIpfs(orgidJsonString);
-        return path; // `${baseUrl}${dir}${fileName}`;
+
+        if (environment.returnIpfsLink) {
+            const path = await storeIpfs(orgidJsonString);
+            return path; 
+        } else {
+            return `${baseUrl}${dir}${fileName}`;
+        }
     };
 
     const saveMedia = async (mediaType, options, baseUrl) => {
@@ -92,11 +97,15 @@ module.exports = function (config) {
         const dir = `uploads/${address}/mediaType/${id}/`;
         const fileName = file.originalname;
 
-        const ipfsPath = storeMediaToIpfs(`${dir}${fileName}`);
+        let ipfsPath;
+
+        if (environment.returnIpfsLink) {
+            ipfsPath = storeMediaToIpfs(`${dir}${fileName}`);
+        }
 
         //${keccak256(file)}
         await copyFromTemp(dir, fileName, file);// just for backup
-        return ipfsPath; // `${baseUrl}${dir}${fileName}`;
+        return ipfsPath ? ipfsPath : `${baseUrl}${dir}${fileName}`;
     };
 
     return Promise.resolve({
