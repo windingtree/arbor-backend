@@ -1,6 +1,7 @@
 const fs = require('fs');
 const Web3 = require('web3');
 const IpfsHttpClient = require('ipfs-http-client');
+const { globSource } = IpfsHttpClient;
 const { keccak256 } = require('js-sha3');
 const log = require('log4js').getLogger('Orgid_json');
 log.level = 'debug';
@@ -27,7 +28,7 @@ module.exports = function (config) {
 
     const storeIpfs = async (content, noKeccak) => {
         // Store in IPFS
-        const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri)
+        const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri);
         let pin = await ipfsStorageClient.add(content, {
             ...(!noKeccak ? {
                 hashAlg: 'keccak-256',
@@ -37,17 +38,23 @@ module.exports = function (config) {
         });
         log.debug('IPFS pin:', pin);
 
-        // Pin in alternative IPFS nodes
-        ipfsPinningNodesUris.forEach(async uri => {
-            const ipfsPinningClient = IpfsHttpClient(uri);
-            try {
-                await ipfsPinningClient.pin.add(pin.cid);
-            } catch(e) {
-                log.warn(e);
-            }
-        });
+        // // Pin in alternative IPFS nodes
+        // ipfsPinningNodesUris.forEach(async uri => {
+        //     const ipfsPinningClient = IpfsHttpClient(uri);
+        //     try {
+        //         await ipfsPinningClient.pin.add(pin.cid);
+        //     } catch(e) {
+        //         log.warn(e);
+        //     }
+        // });
 
-        return pin;
+        return `${ipfsStorageNodeUri}/ipfs/${pin.path}`;
+    };
+
+    const storeMediaToIpfs = async (pathToFile) => {
+        const ipfsStorageClient = IpfsHttpClient(ipfsStorageNodeUri);
+        const pin = await ipfsStorageClient.add(globSource(pathToFile));
+        return `${ipfsStorageNodeUri}/ipfs/${pin.cid.toString()}`;
     };
 
     const removeIpfs = path => {
@@ -72,9 +79,9 @@ module.exports = function (config) {
         const orgidJsonString = JSON.stringify(orgidJson, null, 2);
         const dir = `uploads/${address}/${orgidJson.id ? `${orgidJson.id}/` : ''}`;
         const fileName = `${orgidJson.id ? '' : 'wizard-'}0x${keccak256(orgidJsonString)}.json`;
-        await writeFile(dir, fileName, orgidJsonString);
-        await storeIpfs(orgidJsonString);
-        return `${baseUrl}${dir}${fileName}`;
+        await writeFile(dir, fileName, orgidJsonString); // Just as backup
+        const path = await storeIpfs(orgidJsonString);
+        return path; // `${baseUrl}${dir}${fileName}`;
     };
 
     const saveMedia = async (mediaType, options, baseUrl) => {
@@ -85,15 +92,18 @@ module.exports = function (config) {
         const dir = `uploads/${address}/mediaType/${id}/`;
         const fileName = file.originalname;
 
+        const ipfsPath = storeMediaToIpfs(`${dir}${fileName}`);
+
         //${keccak256(file)}
-        await copyFromTemp(dir, fileName, file);
-        return `${baseUrl}${dir}${fileName}`;
+        await copyFromTemp(dir, fileName, file);// just for backup
+        return ipfsPath; // `${baseUrl}${dir}${fileName}`;
     };
 
     return Promise.resolve({
         saveJson,
         saveMedia,
         storeIpfs,
+        storeMediaToIpfs,
         removeIpfs,
         environment: () => environment
     });
