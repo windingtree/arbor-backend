@@ -4,6 +4,7 @@ services:
   ipfs_host:
     container_name: ipfs_host
     image: ipfs/go-ipfs:latest
+    restart: "always"
     environment:
       - IPFS_PROFILE=server
       - IPFS_PATH=/data/ipfs
