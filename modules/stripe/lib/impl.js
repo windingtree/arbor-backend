@@ -487,7 +487,7 @@ module.exports = (config, models) => {
                     })
                     .on('error', async error => {
                         log.error(`sendTransaction error: ${error.message}`);
-                        reject(err);
+                        reject(error);
                         // try {
                         //     log.error(`sendTransaction error: ${error.message}`);
                         //     await stripe.paymentIntents.cancel(paymentIntentId);
